@@ -6,17 +6,27 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   roles: [{ type: String, enum: ['admin', 'coordinador', 'auxiliar'] }]
-}, { timestamps: true });
+}, { 
+  timestamps: true,
+  // Desactiva la modificación automática del _id
+  versionKey: false,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
 
-// Hash de contraseña ANTES de guardar
+// Hook pre-save MODIFICADO
 UserSchema.pre('save', async function(next) {
+  // Solo hashear si el password fue modificado
   if (!this.isModified('password')) return next();
-  
+
   try {
-    const salt = await bcrypt.genSalt(10);
+    console.log('Contraseña antes de hashear:', this.password);
+    const salt = await bcrypt.genSalt(12);
     this.password = await bcrypt.hash(this.password, salt);
+    console.log('Contraseña hasheada:', this.password);
     next();
   } catch (err) {
+    console.error('Error al hashear:', err);
     next(err);
   }
 });

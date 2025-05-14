@@ -3,77 +3,86 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const config = require('../config/auth.config');
 
-// Función de registro COMPLETA
+// Función de Registro Mejorada
 exports.signup = async (req, res) => {
   try {
-    // Validación básica
-    if (!req.body.username || !req.body.email || !req.body.password) {
+    const { username, email, password } = req.body;
+
+    // Validación mejorada
+    if (!username || !email || !password) {
       return res.status(400).json({ message: 'Todos los campos son requeridos' });
     }
 
-    // Crear nuevo usuario con contraseña hasheada
+    // Crear usuario SIN hashear aquí (dejamos que el modelo lo haga)
     const user = new User({
-      username: req.body.username,
-      email: req.body.email,
-      password: bcrypt.hashSync(req.body.password, 12), // Hash con salt rounds = 12
-      roles: req.body.roles || ['auxiliar'] // Rol por defecto
+      username,
+      email,
+      password, // Se hasheará automáticamente en el pre-save hook
+      roles: req.body.roles || ['auxiliar']
     });
 
-    // Guardar en MongoDB
+    // Guardar usuario
     await user.save();
+    
+    // Generar token
+    const token = jwt.sign(
+      { id: user._id },
+      config.secret,
+      { expiresIn: config.jwtExpiration }
+    );
 
-    // Respuesta exitosa (sin incluir password)
+    // Preparar respuesta
     const userResponse = user.toObject();
     delete userResponse.password;
 
     res.status(201).json({
-      message: 'Usuario registrado exitosamente!',
-      user: userResponse
+      success: true,
+      message: 'Usuario registrado exitosamente',
+      user: userResponse,
+      accessToken: token
     });
 
   } catch (error) {
-    // Manejo específico de errores de duplicados
-    if (error.code === 11000) {
-      const field = error.message.includes('email') ? 'email' : 'username';
-      return res.status(400).json({ 
-        message: `El ${field} ya está registrado` 
-      });
-    }
-    
-    // Otros errores
+    console.error('Error en registro:', error);
     res.status(500).json({ 
-      message: 'Error al registrar usuario',
-      error: error.message 
+      success: false,
+      message: 'Error en el servidor',
+      error: error.message
     });
   }
 };
 
-// Función de login COMPLETA
+// Función de Login Mejorada
 exports.signin = async (req, res) => {
   try {
-    // Validación
-    if (!req.body.username || !req.body.password) {
-      return res.status(400).json({ message: 'Usuario y contraseña son requeridos' });
-    }
+    const { username, password } = req.body;
+    console.log('Intento de login para:', username, 'con pass:', password);
 
-    // Buscar usuario (incluyendo el campo password)
-    const user = await User.findOne({ username: req.body.username }).select('+password');
+    const user = await User.findOne({ username }).select('+password');
     
     if (!user) {
+      console.log('Usuario no encontrado en BD');
       return res.status(404).json({ 
-        accessToken: null,
+        success: false,
         message: 'Usuario no encontrado' 
       });
     }
 
-    // Comparar contraseñas
-    const passwordIsValid = await bcrypt.compare(
-      req.body.password,
-      user.password
-    );
-    
-    if (!passwordIsValid) {
+    // Debug: Mostrar hash almacenado
+    console.log('Hash almacenado:', user.password);
+
+    // Comparación directa con bcrypt
+    const isMatch = await bcrypt.compare(password, user.password);
+    console.log('Resultado comparación:', isMatch);
+
+    if (!isMatch) {
+      // Debug adicional: Intentar recrear el hash
+      const testHash = await bcrypt.hash(password, user.password.substring(0, 29));
+      console.log('Hash recalculado:', testHash);
+      console.log('Coincide con almacenado?', testHash === user.password);
+      
       return res.status(401).json({
+        success: false,
         accessToken: null,
         message: 'Credenciales inválidas'
       });
@@ -85,27 +94,29 @@ exports.signin = async (req, res) => {
         id: user._id,
         username: user.username,
         roles: user.roles 
-      }, 
+      },
       config.secret,
-      { 
-        expiresIn: config.jwtExpiration // Ej: "2h", "7d" 
-      }
+      { expiresIn: config.jwtExpiration }
     );
 
-    // Respuesta exitosa (sin incluir password)
-    const userData = user.toObject();
-    delete userData.password;
-
     res.status(200).json({
-      ...userData,
+      success: true,
+      message: 'Inicio de sesión exitoso',
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        roles: user.roles
+      },
       accessToken: token
     });
 
   } catch (error) {
     console.error('Error en login:', error);
-    res.status(500).json({ 
-      message: 'Error interno al iniciar sesión',
-      error: error.message 
+    res.status(500).json({
+      success: false,
+      message: 'Error en el servidor',
+      error: error.message
     });
   }
 };
