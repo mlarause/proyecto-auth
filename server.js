@@ -18,29 +18,34 @@ connectDB().then(() => {
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
 
-  // Rutas básicas (obligatorias)
+  // Rutas básicas
   app.use('/api/auth', require('./routes/authRoutes'));
   app.use('/api/users', require('./routes/userRoutes'));
 
-  // Sistema de carga dinámica de rutas CRUD
+  // Carga dinámica de rutas CRUD con validación
   const crudRoutes = [
-    { path: '/api/categories', file: 'categoryRoutes.js' },
-    { path: '/api/subcategories', file: 'subcategoryRoutes.js' },
-    { path: '/api/suppliers', file: 'supplierRoutes.js' },
-    { path: '/api/products', file: 'productRoutes.js' }
+    { path: '/api/categories', file: 'categoryRoutes' },
+    { path: '/api/subcategories', file: 'subcategoryRoutes' },
+    { path: '/api/suppliers', file: 'supplierRoutes' },
+    { path: '/api/products', file: 'productRoutes' }
   ];
 
-  crudRoutes.forEach(route => {
-    const routePath = path.join(__dirname, 'routes', route.file);
-    if (fs.existsSync(routePath)) {
-      try {
-        app.use(route.path, require(`./routes/${route.file}`));
-        console.log(`✅ Rutas de ${route.file} cargadas correctamente`);
-      } catch (err) {
-        console.error(`⚠️ Error al cargar ${route.file}:`, err.message);
+  crudRoutes.forEach(({ path: routePath, file }) => {
+    const filePath = `./routes/${file}`;
+    try {
+      if (fs.existsSync(`${__dirname}/routes/${file}.js`)) {
+        const router = require(filePath);
+        if (typeof router === 'function') {
+          app.use(routePath, router);
+          console.log(`✅ Rutas de ${file}.js cargadas correctamente`);
+        } else {
+          console.log(`⚠️ El archivo ${file}.js no exporta un router válido`);
+        }
+      } else {
+        console.log(`⏩ ${file}.js no existe, se omite`);
       }
-    } else {
-      console.log(`⏩ ${route.file} no existe, se omite`);
+    } catch (err) {
+      console.error(`❌ Error al cargar ${file}.js:`, err.message);
     }
   });
 

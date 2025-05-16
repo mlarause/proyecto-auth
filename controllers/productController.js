@@ -3,122 +3,91 @@ const Category = require('../models/Category');
 const Subcategory = require('../models/Subcategory');
 const Supplier = require('../models/Supplier');
 
-// Crear producto (Admin)
-exports.createProduct = async (req, res) => {
+exports.create = async (req, res) => {
   try {
-    const { name, description, price, stock, category, subcategory, supplier } = req.body;
+    const { nombre, descripcion, precio, categoria, subcategoria, proveedor, stock } = req.body;
     
     // Validar relaciones
-    const [categoryExists, subcategoryExists, supplierExists] = await Promise.all([
-      Category.findById(category),
-      Subcategory.findById(subcategory),
-      Supplier.findById(supplier)
+    const [catExist, subcatExist, provExist] = await Promise.all([
+      Category.findById(categoria),
+      Subcategory.findById(subcategoria),
+      Supplier.findById(proveedor)
     ]);
-    
-    if (!categoryExists || !subcategoryExists || !supplierExists) {
-      return res.status(400).json({ 
-        success: false,
-        message: 'Categoría, subcategoría o proveedor no válidos' 
-      });
+
+    if (!catExist || !subcatExist || !provExist) {
+      return res.status(400).json({ message: 'Categoría, subcategoría o proveedor no válidos' });
     }
 
     const product = new Product({
-      name,
-      description,
-      price,
-      stock,
-      category,
-      subcategory,
-      supplier
+      nombre,
+      descripcion,
+      precio,
+      categoria,
+      subcategoria,
+      proveedor,
+      stock
     });
 
     await product.save();
-    
-    res.status(201).json({
-      success: true,
-      data: product
-    });
+    res.status(201).json(product);
   } catch (error) {
-    res.status(500).json({ 
-      success: false,
-      message: 'Error al crear producto',
-      error: error.message 
-    });
+    res.status(400).json({ error: error.message });
   }
 };
 
-// Listar productos (Todos los roles)
-exports.getProducts = async (req, res) => {
+exports.findAll = async (req, res) => {
   try {
     const products = await Product.find()
-      .populate('category', 'name')
-      .populate('subcategory', 'name')
-      .populate('supplier', 'name');
-    
-    res.json({
-      success: true,
-      count: products.length,
-      data: products
-    });
+      .populate('categoria', 'nombre')
+      .populate('subcategoria', 'nombre')
+      .populate('proveedor', 'nombre');
+    res.json(products);
   } catch (error) {
-    res.status(500).json({ 
-      success: false,
-      message: 'Error al obtener productos',
-      error: error.message 
-    });
+    res.status(500).json({ error: error.message });
   }
 };
 
-// Actualizar producto (Admin y Coordinador)
-exports.updateProduct = async (req, res) => {
+exports.findOne = async (req, res) => {
   try {
-    const product = await Product.findByIdAndUpdate(
-      req.params.id, 
-      req.body, 
-      { new: true, runValidators: true }
-    );
+    const product = await Product.findById(req.params.id)
+      .populate('categoria', 'nombre descripcion')
+      .populate('subcategoria', 'nombre descripcion')
+      .populate('proveedor', 'nombre contacto');
     
     if (!product) {
-      return res.status(404).json({ 
-        success: false,
-        message: 'Producto no encontrado' 
-      });
+      return res.status(404).json({ message: 'Producto no encontrado' });
     }
-    
-    res.json({
-      success: true,
-      data: product
-    });
+    res.json(product);
   } catch (error) {
-    res.status(500).json({ 
-      success: false,
-      message: 'Error al actualizar producto',
-      error: error.message 
-    });
+    res.status(500).json({ error: error.message });
   }
 };
 
-// Eliminar producto (Solo Admin)
-exports.deleteProduct = async (req, res) => {
+exports.update = async (req, res) => {
+  try {
+    const updatedProduct = await Product.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    ).populate('categoria subcategoria proveedor');
+    
+    if (!updatedProduct) {
+      return res.status(404).json({ message: 'Producto no encontrado' });
+    }
+    res.json(updatedProduct);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+exports.delete = async (req, res) => {
   try {
     const product = await Product.findByIdAndDelete(req.params.id);
-    
     if (!product) {
-      return res.status(404).json({ 
-        success: false,
-        message: 'Producto no encontrado' 
-      });
+      return res.status(404).json({ message: 'Producto no encontrado' });
     }
-    
-    res.json({
-      success: true,
-      data: {}
-    });
+    res.json({ message: 'Producto eliminado correctamente' });
   } catch (error) {
-    res.status(500).json({ 
-      success: false,
-      message: 'Error al eliminar producto',
-      error: error.message 
-    });
+    res.status(500).json({ error: error.message });
   }
 };
