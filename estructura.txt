@@ -1,0 +1,27 @@
+proyecto-auth/
+├── controllers/
+│   ├── authController.js
+│   ├── categoryController.js
+│   ├── productController.js
+│   ├── subcategoryController.js
+│   ├── supplierController.js
+│   └── userController.js
+├── middlewares/
+│   └── authJwt.js
+├── models/
+│   ├── Category.js
+│   ├── Product.js
+│   ├── Subcategory.js
+│   ├── Supplier.js
+│   └── User.js
+├── routes/
+│   ├── authRoutes.js
+│   ├── categoryRoutes.js
+│   ├── productRoutes.js
+│   ├── subcategoryRoutes.js
+│   ├── supplierRoutes.js
+│   └── userRoutes.js
+├── .env
+├── database.js
+├── package.json
+└── server.js

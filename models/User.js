@@ -13,6 +13,12 @@ const UserSchema = new Schema({
     type: String,
     required: true
   },
+  rol: {
+    type: String,
+    required: true,
+    enum: ['admin', 'coordinador', 'auxiliar'],
+    default: 'auxiliar'
+  },
   date: {
     type: Date,
     default: Date.now

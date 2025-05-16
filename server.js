@@ -6,23 +6,25 @@ const { connectDB } = require('./database');
 
 const app = express();
 
-// Configuración mejorada de conexión a DB
-connectDB().then(() => {
-  // Middlewares
-  app.use(cors());
-  app.use(morgan('dev'));
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: false }));
+// Conectar a DB
+connectDB();
 
-  // Rutas
-  app.use('/api/users', require('./routes/userRoutes'));
-  app.use('/api/auth', require('./routes/authRoutes'));
+// Middlewares
+app.use(cors());
+app.use(morgan('dev'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
-  const PORT = process.env.PORT || 3000;
+// Rutas
+app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/categories', require('./routes/categoryRoutes'));
+app.use('/api/subcategories', require('./routes/subcategoryRoutes'));
+app.use('/api/suppliers', require('./routes/supplierRoutes'));
+app.use('/api/products', require('./routes/productRoutes'));
 
-  app.listen(PORT, () => {
-    console.log(`Servidor corriendo en el puerto ${PORT}`);
-  });
-}).catch(err => {
-  console.error('No se pudo iniciar la aplicación:', err);
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Servidor corriendo en puerto ${PORT}`);
 });
