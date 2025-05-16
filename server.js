@@ -6,25 +6,56 @@ const { connectDB } = require('./database');
 
 const app = express();
 
-// Conectar a DB
-connectDB();
+// Conexión a DB con manejo de errores mejorado
+connectDB().then(() => {
+  console.log('Conexión a MongoDB establecida');
+  
+  // Middlewares
+  app.use(cors());
+  app.use(morgan('dev'));
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: false }));
 
-// Middlewares
-app.use(cors());
-app.use(morgan('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+  // Rutas básicas (siempre presentes)
+  app.use('/api/auth', require('./routes/authRoutes'));
+  app.use('/api/users', require('./routes/userRoutes'));
 
-// Rutas
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/users', require('./routes/userRoutes'));
-app.use('/api/categories', require('./routes/categoryRoutes'));
-app.use('/api/subcategories', require('./routes/subcategoryRoutes'));
-app.use('/api/suppliers', require('./routes/supplierRoutes'));
-app.use('/api/products', require('./routes/productRoutes'));
+  // Rutas CRUD (solo si existen los archivos)
+  try {
+    app.use('/api/categories', require('./routes/categoryRoutes'));
+    console.log('Rutas de categorías cargadas');
+  } catch (err) {
+    console.log('No se cargaron rutas de categorías:', err.message);
+  }
 
-const PORT = process.env.PORT || 3000;
+  try {
+    app.use('/api/subcategories', require('./routes/subcategoryRoutes'));
+    console.log('Rutas de subcategorías cargadas');
+  } catch (err) {
+    console.log('No se cargaron rutas de subcategorías:', err.message);
+  }
 
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en puerto ${PORT}`);
+  try {
+    app.use('/api/suppliers', require('./routes/supplierRoutes'));
+    console.log('Rutas de proveedores cargadas');
+  } catch (err) {
+    console.log('No se cargaron rutas de proveedores:', err.message);
+  }
+
+  try {
+    app.use('/api/products', require('./routes/productRoutes'));
+    console.log('Rutas de productos cargadas');
+  } catch (err) {
+    console.log('No se cargaron rutas de productos:', err.message);
+  }
+
+  const PORT = process.env.PORT || 3000;
+
+  app.listen(PORT, () => {
+    console.log(`Servidor corriendo en puerto ${PORT}`);
+  });
+
+}).catch(err => {
+  console.error('Error fatal al conectar a MongoDB:', err);
+  process.exit(1); // Salir si no hay conexión a DB
 });
