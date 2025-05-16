@@ -1,31 +1,29 @@
 require('dotenv').config();
 const express = require('express');
-const bodyParser = require('body-parser');
 const cors = require('cors');
-const mongoose = require('mongoose');
+const morgan = require('morgan');
+const { connectDB } = require('./database');
 
+// Crear la aplicación Express
 const app = express();
+
+// Conectar a la base de datos
+connectDB();
 
 // Middlewares
 app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(morgan('dev'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
-// Conexión a MongoDB (versión simplificada y segura)
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/proyecto-auth')
-  .then(() => console.log('✅ Conexión a MongoDB exitosa'))
-  .catch(err => console.error('❌ Error de conexión a MongoDB:', err));
+// Rutas
+app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/auth', require('./routes/authRoutes'));
 
-// Importación de rutas
-const authRoutes = require('./routes/authRoutes');
-const userRoutes = require('./routes/userRoutes');
-
-// Configuración de rutas
-app.use('/api/auth', authRoutes);
-app.use('/api/test', userRoutes);
-
-// Puerto y arranque del servidor
+// Configuración del puerto
 const PORT = process.env.PORT || 3000;
+
+// Iniciar servidor
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+  console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
