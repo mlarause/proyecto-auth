@@ -20,3 +20,14 @@ exports.coordinadorBoard = (req, res) => {
 exports.auxiliarBoard = (req, res) => {
   res.status(200).send("Contenido de auxiliar.");
 };
+
+// Asegúrate de exportar las funciones que usas en las rutas:
+module.exports = {
+  register: async (req, res) => {
+    // Lógica de registro...
+  },
+  login: async (req, res) => {
+    // Lógica de login...
+  },
+  // ... otras funciones si las usas
+};
