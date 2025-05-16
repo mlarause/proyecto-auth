@@ -3,58 +3,74 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const { connectDB } = require('./database');
-const fs = require('fs');
-const path = require('path');
+const mongoose = require('mongoose');
 
+// Configuración de Express
 const app = express();
+const PORT = process.env.PORT || 3000;
 
-// Conexión a DB
-connectDB().then(() => {
-  console.log('✅ Conexión a MongoDB establecida');
-  
-  // Middlewares
-  app.use(cors());
-  app.use(morgan('dev'));
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: false }));
+// Middlewares básicos
+app.use(cors());
+app.use(morgan('dev'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
-  // Rutas básicas
-  app.use('/api/auth', require('./routes/authRoutes'));
-  app.use('/api/users', require('./routes/userRoutes'));
-
-  // Carga dinámica de rutas CRUD con validación
-  const crudRoutes = [
-    { path: '/api/categories', file: 'categoryRoutes' },
-    { path: '/api/subcategories', file: 'subcategoryRoutes' },
-    { path: '/api/suppliers', file: 'supplierRoutes' },
-    { path: '/api/products', file: 'productRoutes' }
-  ];
-
-  crudRoutes.forEach(({ path: routePath, file }) => {
-    const filePath = `./routes/${file}`;
-    try {
-      if (fs.existsSync(`${__dirname}/routes/${file}.js`)) {
-        const router = require(filePath);
-        if (typeof router === 'function') {
-          app.use(routePath, router);
-          console.log(`✅ Rutas de ${file}.js cargadas correctamente`);
-        } else {
-          console.log(`⚠️ El archivo ${file}.js no exporta un router válido`);
-        }
-      } else {
-        console.log(`⏩ ${file}.js no existe, se omite`);
-      }
-    } catch (err) {
-      console.error(`❌ Error al cargar ${file}.js:`, err.message);
-    }
-  });
-
-  const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => {
-    console.log(`🚀 Servidor funcionando en http://localhost:${PORT}`);
-  });
-
-}).catch(err => {
-  console.error('❌ Error fatal al conectar a MongoDB:', err.message);
-  process.exit(1);
+// Manejo mejorado de conexión a MongoDB
+mongoose.connection.on('connected', () => {
+  console.log('✅ MongoDB conectado exitosamente');
 });
+
+mongoose.connection.on('error', (err) => {
+  console.error('❌ Error de conexión a MongoDB:', err.message);
+});
+
+// Importación de rutas
+const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
+const categoryRoutes = require('./routes/categoryRoutes');
+const subcategoryRoutes = require('./routes/subcategoryRoutes');
+const productRoutes = require('./routes/productRoutes');
+const supplierRoutes = require('./routes/supplierRoutes');
+
+// Asignación de rutas
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/subcategories', subcategoryRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/suppliers', supplierRoutes);
+
+// Ruta de prueba básica
+app.get('/', (req, res) => {
+  res.status(200).json({ 
+    message: 'API Proyecto-Auth funcionando',
+    status: 'OK' 
+  });
+});
+
+// Manejo centralizado de errores
+app.use((err, req, res, next) => {
+  console.error('⚠️ Error:', err.stack);
+  res.status(500).json({ 
+    success: false,
+    message: 'Error interno del servidor',
+    error: err.message 
+  });
+});
+
+// Inicialización del servidor
+const startServer = async () => {
+  try {
+    await connectDB(); // Conexión a la base de datos
+    
+    app.listen(PORT, () => {
+      console.log(`🚀 Servidor escuchando en http://localhost:${PORT}`);
+    });
+
+  } catch (error) {
+    console.error('❌ Error fatal al iniciar:', error.message);
+    process.exit(1);
+  }
+};
+
+startServer();
