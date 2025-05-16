@@ -6,35 +6,40 @@ const { connectDB } = require('./database');
 
 const app = express();
 
-// Middlewares
+// Middlewares básicos
 app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Conexión a DB y rutas
+// Conexión a MongoDB
 connectDB().then(() => {
-  console.log('✅ MongoDB conectado');
+  console.log('✅ MongoDB conectado correctamente');
   
-  // Rutas
-  app.use('/api/auth', require('./routes/authRoutes'));
-  app.use('/api/users', require('./routes/userRoutes'));
-  app.use('/api/categories', require('./routes/categoryRoutes'));
-  app.use('/api/subcategories', require('./routes/subcategoryRoutes'));
-  app.use('/api/products', require('./routes/productRoutes'));
-  app.use('/api/suppliers', require('./routes/supplierRoutes'));
+  // Importación dinámica de rutas
+  const routes = [
+    { path: '/api/auth', file: './routes/authRoutes' },
+    { path: '/api/users', file: './routes/userRoutes' },
+    { path: '/api/categories', file: './routes/categoryRoutes' }
+    // Agrega aquí otras rutas
+  ];
 
-  // Ruta de prueba
-  app.get('/', (req, res) => {
-    res.json({ status: 'API funcionando' });
+  routes.forEach(route => {
+    try {
+      const router = require(route.file);
+      app.use(route.path, router);
+      console.log(`✅ Ruta ${route.path} cargada correctamente`);
+    } catch (err) {
+      console.error(`⚠️ Error cargando ${route.path}:`, err.message);
+    }
   });
 
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => {
-    console.log(`🚀 Servidor en http://localhost:${PORT}`);
+    console.log(`🚀 Servidor ejecutándose en http://localhost:${PORT}`);
   });
 
 }).catch(err => {
-  console.error('❌ Error fatal:', err);
+  console.error('❌ Error fatal al iniciar:', err.message);
   process.exit(1);
 });
