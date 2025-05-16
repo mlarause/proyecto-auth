@@ -1,13 +1,16 @@
 const mongoose = require('mongoose');
-const { Schema } = mongoose;
+const bcrypt = require('bcryptjs');
 
-const UserSchema = new Schema({
+const UserSchema = new mongoose.Schema({
+  username: {
+    type: String,
+    required: true,
+    unique: true
+  },
   email: {
     type: String,
     required: true,
-    unique: true,
-    trim: true,
-    lowercase: true
+    unique: true
   },
   password: {
     type: String,
@@ -15,7 +18,6 @@ const UserSchema = new Schema({
   },
   rol: {
     type: String,
-    required: true,
     enum: ['admin', 'coordinador', 'auxiliar'],
     default: 'auxiliar'
   },
@@ -24,5 +26,23 @@ const UserSchema = new Schema({
     default: Date.now
   }
 });
+
+// Encriptar contraseña antes de guardar
+UserSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next();
+  
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Método para comparar contraseñas
+UserSchema.methods.comparePassword = async function(candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
+};
 
 module.exports = mongoose.model('User', UserSchema);

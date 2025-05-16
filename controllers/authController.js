@@ -1,121 +1,82 @@
 const User = require('../models/User');
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const config = require('../config/auth.config');
 
-// Función de Registro Mejorada
 exports.signup = async (req, res) => {
   try {
-    const { username, email, password } = req.body;
-
-    // Validación mejorada
-    if (!username || !email || !password) {
-      return res.status(400).json({ message: 'Todos los campos son requeridos' });
-    }
-
-    // Crear usuario SIN hashear aquí (dejamos que el modelo lo haga)
+    // La contraseña se encripta automáticamente por el pre-save hook
     const user = new User({
-      username,
-      email,
-      password, // Se hasheará automáticamente en el pre-save hook
-      rol: req.body.rol || ['auxiliar']
+      username: req.body.username,
+      email: req.body.email,
+      password: req.body.password, // Se encriptará antes de guardar
+      rol: req.body.rol
     });
 
-    // Guardar usuario
     await user.save();
-    
-    // Generar token
-    const token = jwt.sign(
-      { id: user._id },
-      config.secret,
-      { expiresIn: config.jwtExpiration }
-    );
 
-    // Preparar respuesta
-    const userResponse = user.toObject();
-    delete userResponse.password;
+    const token = jwt.sign({ id: user._id }, config.secret, {
+      expiresIn: 86400 // 24 horas
+    });
 
     res.status(201).json({
       success: true,
-      message: 'Usuario registrado exitosamente',
-      user: userResponse,
+      message: "Usuario registrado exitosamente",
+      user: {
+        email: user.email,
+        rol: user.rol,
+        _id: user._id
+      },
       accessToken: token
     });
 
   } catch (error) {
-    console.error('Error en registro:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: 'Error en el servidor',
+      message: "Error en el servidor",
       error: error.message
     });
   }
 };
 
-// Función de Login Mejorada
 exports.signin = async (req, res) => {
   try {
-    const { username, password } = req.body;
-    console.log('Intento de login para:', username, 'con pass:', password);
+    const user = await User.findOne({ username: req.body.username });
 
-    const user = await User.findOne({ username }).select('+password');
-    
     if (!user) {
-      console.log('Usuario no encontrado en BD');
       return res.status(404).json({ 
         success: false,
-        message: 'Usuario no encontrado' 
+        message: "Usuario no encontrado" 
       });
     }
 
-    // Debug: Mostrar hash almacenado
-    console.log('Hash almacenado:', user.password);
+    const passwordIsValid = await user.comparePassword(req.body.password);
 
-    // Comparación directa con bcrypt
-    const isMatch = await bcrypt.compare(password, user.password);
-    console.log('Resultado comparación:', isMatch);
-
-    if (!isMatch) {
-      // Debug adicional: Intentar recrear el hash
-      const testHash = await bcrypt.hash(password, user.password.substring(0, 29));
-      console.log('Hash recalculado:', testHash);
-      console.log('Coincide con almacenado?', testHash === user.password);
-      
+    if (!passwordIsValid) {
       return res.status(401).json({
         success: false,
-        accessToken: null,
-        message: 'Credenciales inválidas'
+        message: "Contraseña incorrecta"
       });
     }
 
-    // Generar token JWT
-    const token = jwt.sign(
-      { 
-        id: user._id,
-        username: user.username,
-        roles: user.roles 
-      },
-      config.secret,
-      { expiresIn: config.jwtExpiration }
-    );
+    const token = jwt.sign({ id: user._id }, config.secret, {
+      expiresIn: 86400 // 24 horas
+    });
 
     res.status(200).json({
       success: true,
-      message: 'Inicio de sesión exitoso',
+      message: "Inicio de sesión exitoso",
       user: {
-        id: user._id,
-        username: user.username,
         email: user.email,
-        roles: user.roles
+        rol: user.rol,
+        _id: user._id
       },
       accessToken: token
     });
 
   } catch (error) {
-    console.error('Error en login:', error);
     res.status(500).json({
       success: false,
-      message: 'Error en el servidor',
+      message: "Error en el servidor",
       error: error.message
     });
   }
