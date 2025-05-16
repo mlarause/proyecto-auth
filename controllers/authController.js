@@ -18,7 +18,7 @@ exports.signup = async (req, res) => {
       username,
       email,
       password, // Se hasheará automáticamente en el pre-save hook
-      roles: req.body.roles || ['auxiliar']
+      rol: req.body.rol || ['auxiliar']
     });
 
     // Guardar usuario
