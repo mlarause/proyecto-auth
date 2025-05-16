@@ -1,8 +1,17 @@
 const express = require('express');
-const router = express.Router();
-const authController = require('../controllers/authController');
+const router = express.Router(); // ¡Usar express.Router()!
+const userController = require('../controllers/userController');
+const { verifyToken, isAdmin } = require('../middlewares/authJwt');
 
-router.post('/signup', authController.signup);
-router.post('/signin', authController.signin);
+// Registro público
+router.post('/register', userController.register);
+
+// Rutas protegidas
+router.use(verifyToken); // Middleware para rutas siguientes
+
+router.get('/', userController.getAllUsers);
+router.post('/', isAdmin, userController.createUser);
+router.put('/:id', isAdmin, userController.updateUser);
+router.delete('/:id', isAdmin, userController.deleteUser);
 
 module.exports = router;
