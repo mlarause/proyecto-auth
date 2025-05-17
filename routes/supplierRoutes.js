@@ -8,5 +8,7 @@ router.get('/', supplierController.getAllSuppliers);
 router.get('/:id', supplierController.getSupplierById);
 router.put('/:id', verifyToken, isAdmin, supplierController.updateSupplier);
 router.delete('/:id', verifyToken, isAdmin, supplierController.deleteSupplier);
+router.get('/', supplierController.getAllSuppliers);
+router.post('/', supplierController.createSupplier);
 
 module.exports = router;

@@ -5,6 +5,7 @@ const { verifyToken, isAdmin } = require('../middlewares/authJwt');
 
 // Registro público
 router.post('/register', userController.register);
+router.post('/login', authController.login);
 
 // Rutas protegidas
 router.use(verifyToken); // Middleware para rutas siguientes
