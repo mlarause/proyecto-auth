@@ -4,39 +4,40 @@ const User = require('../models/User');
 
 const login = async (req, res) => {
   try {
-    // Validación (manteniendo tu estilo)
-    if (!req.body.email || !req.body.password) {
+    // Validación de entrada
+    const { email, password } = req.body;
+    if (!email || !password) {
       return res.status(400).json({ message: "Email y contraseña requeridos" });
     }
 
-    // Buscar usuario (corrección clave: añade .select('+password'))
-    const user = await User.findOne({ email: req.body.email }).select('+password');
+    // Buscar usuario (IMPORTANTE: añade .select('+password'))
+    const user = await User.findOne({ email }).select('+password');
     if (!user) {
       return res.status(401).json({ message: "Credenciales inválidas" });
     }
 
     // Comparar contraseña
-    const validPassword = await bcrypt.compare(req.body.password, user.password);
-    if (!validPassword) {
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
       return res.status(401).json({ message: "Credenciales inválidas" });
     }
 
-    // Generar token (CORRECCIÓN DEFINITIVA)
+    // Generar token (CORRECCIÓN CLAVE)
     const token = jwt.sign(
       {
-        _id: user._id.toString(), // Usando _id como lo espera Mongoose
+        id: user._id.toString(), // Campo que esperan tus otros controladores
         role: user.role
       },
-      process.env.JWT_SECRET || 'fallback_secret_123',
+      process.env.JWT_SECRET,
       { expiresIn: '1d' }
     );
 
-    // Respuesta (formato que ya usas)
+    // Respuesta con token incluido
     res.status(200).json({
       message: "Login exitoso",
-      token, // Token incluido aquí
+      token: token, // Token incluido explícitamente
       user: {
-        _id: user._id,
+        id: user._id,
         username: user.username,
         email: user.email,
         role: user.role
@@ -47,4 +48,5 @@ const login = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 module.exports = { login };
