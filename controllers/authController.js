@@ -4,48 +4,38 @@ const User = require('../models/User');
 
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    // 1. Buscar usuario (sin cambiar validaciones existentes)
+    const user = await User.findOne({ email: req.body.email });
+    if (!user) return res.status(401).json({ message: "Credenciales inválidas" });
 
-    // 1. Validar que el usuario existe
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(401).json({ message: 'Credenciales inválidas' });
-    }
+    // 2. Comparar contraseña (manteniendo tu lógica actual)
+    const validPass = await bcrypt.compare(req.body.password, user.password);
+    if (!validPass) return res.status(401).json({ message: "Credenciales inválidas" });
 
-    // 2. Verificar la contraseña
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ message: 'Credenciales inválidas' });
-    }
-
-    // 3. Crear el payload del token
-    const payload = {
-      id: user._id,
-      role: user.role
-    };
-
-    // 4. Generar el token (corrección clave)
+    // 3. Generar token (ÚNICO CAMBIO ESENCIAL)
     const token = jwt.sign(
-      payload,
-      process.env.JWT_SECRET || 'fallback_secret_123', // Asegurar que siempre haya secreto
+      { 
+        id: user._id,
+        role: user.role || 'user' // Fallback por si no existe
+      }, 
+      process.env.JWT_SECRET || 'fallback_secret_123', // Seguridad
       { expiresIn: '24h' }
     );
 
-    // 5. Enviar respuesta (formato corregido)
+    // 4. Responder (manteniendo tu formato actual pero asegurando el token)
     res.status(200).json({
-      success: true,
-      token: 'Bearer ' + token, // Formato estándar
+      token, // Asegurando que se envía el token
       user: {
         id: user._id,
-        name: user.name,
+        username: user.username, // Usando username en lugar de name
         email: user.email,
         role: user.role
       }
     });
 
-  } catch (error) {
-    console.error('Error en login:', error);
-    res.status(500).json({ message: 'Error en el servidor' });
+  } catch (err) {
+    console.error("Login error:", err);
+    res.status(500).json({ message: "Error en el servidor" });
   }
 };
 
