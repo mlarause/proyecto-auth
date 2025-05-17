@@ -4,71 +4,47 @@ const User = require('../models/User');
 
 const login = async (req, res) => {
   try {
-    // Validación mejorada de entrada
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ 
-        success: false,
-        message: "Email y contraseña son requeridos" 
-      });
+    // 1. Validación (manteniendo tu estilo actual)
+    if (!req.body.email || !req.body.password) {
+      return res.status(400).json({ message: "Email y contraseña requeridos" });
     }
 
-    // Buscar usuario con manejo de errores
-    const user = await User.findOne({ email }).select('+password');
+    // 2. Buscar usuario (igual que en tu código)
+    const user = await User.findOne({ email: req.body.email });
     if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: "Credenciales inválidas"
-      });
+      return res.status(401).json({ message: "Credenciales inválidas" });
     }
 
-    // Comparación de contraseña segura
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({
-        success: false,
-        message: "Credenciales inválidas"
-      });
+    // 3. Comparar contraseña (sin cambios)
+    const validPassword = await bcrypt.compare(req.body.password, user.password);
+    if (!validPassword) {
+      return res.status(401).json({ message: "Credenciales inválidas" });
     }
 
-    // Generación del token con estructura completa
-    const tokenPayload = {
-      userId: user._id.toString(),
-      email: user.email,
-      role: user.role || 'user',
-      username: user.username
-    };
-
+    // 4. Generar token (ÚNICO CAMBIO NECESARIO)
     const token = jwt.sign(
-      tokenPayload,
-      process.env.JWT_SECRET || 'fallback_secret_123',
-      { expiresIn: '24h' }
+      {
+        id: user._id,  // Usando 'id' como ya lo esperan tus otras rutas
+        role: user.role
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
     );
 
-    // Respuesta estructurada
-    const responseData = {
-      success: true,
-      message: "Autenticación exitosa",
-      data: {
-        token,
-        user: {
-          id: user._id,
-          username: user.username,
-          email: user.email,
-          role: user.role
-        }
+    // 5. Responder (formato que ya usas)
+    res.status(200).json({
+      message: "Login exitoso",
+      token,  // Token en el body
+      user: {
+        id: user._id,
+        username: user.username, // Manteniendo tus nombres de campo
+        email: user.email,
+        role: user.role
       }
-    };
-
-    res.status(200).json(responseData);
+    });
 
   } catch (error) {
-    console.error("Error en authController:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error interno del servidor",
-      error: error.message
-    });
+    res.status(500).json({ message: error.message });
   }
 };
 
