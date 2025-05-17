@@ -9,7 +9,7 @@ const login = async (req, res) => {
       return res.status(400).json({ message: "Email y contraseña requeridos" });
     }
 
-    // 2. Buscar usuario (igual que en tu código)
+    // 2. Buscar usuario (sin cambios)
     const user = await User.findOne({ email: req.body.email });
     if (!user) {
       return res.status(401).json({ message: "Credenciales inválidas" });
@@ -21,10 +21,10 @@ const login = async (req, res) => {
       return res.status(401).json({ message: "Credenciales inválidas" });
     }
 
-    // 4. Generar token (ÚNICO CAMBIO NECESARIO)
+    // 4. Generar token (CORRECCIÓN CLAVE)
     const token = jwt.sign(
       {
-        id: user._id,  // Usando 'id' como ya lo esperan tus otras rutas
+        id: user._id.toString(), // Asegurando que sea string
         role: user.role
       },
       process.env.JWT_SECRET,
@@ -34,10 +34,10 @@ const login = async (req, res) => {
     // 5. Responder (formato que ya usas)
     res.status(200).json({
       message: "Login exitoso",
-      token,  // Token en el body
+      token: token, // Token incluido explícitamente
       user: {
         id: user._id,
-        username: user.username, // Manteniendo tus nombres de campo
+        username: user.username,
         email: user.email,
         role: user.role
       }
@@ -47,5 +47,4 @@ const login = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 module.exports = { login };
