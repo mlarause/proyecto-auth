@@ -4,38 +4,37 @@ const User = require('../models/User');
 
 const login = async (req, res) => {
   try {
-    // Validación (igual a tu código actual)
-    const { email, password } = req.body;
-    if (!email || !password) {
+    // Validación (manteniendo tu estilo)
+    if (!req.body.email || !req.body.password) {
       return res.status(400).json({ message: "Email y contraseña requeridos" });
     }
 
-    // Buscar usuario con contraseña (corrección importante)
-    const user = await User.findOne({ email }).select('+password');
+    // Buscar usuario (corrección clave: añade .select('+password'))
+    const user = await User.findOne({ email: req.body.email }).select('+password');
     if (!user) {
       return res.status(401).json({ message: "Credenciales inválidas" });
     }
 
     // Comparar contraseña
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
+    const validPassword = await bcrypt.compare(req.body.password, user.password);
+    if (!validPassword) {
       return res.status(401).json({ message: "Credenciales inválidas" });
     }
 
     // Generar token (CORRECCIÓN DEFINITIVA)
     const token = jwt.sign(
       {
-        _id: user._id.toString(), // Usando _id como lo espera tu middleware
+        _id: user._id.toString(), // Usando _id como lo espera Mongoose
         role: user.role
       },
-      process.env.JWT_SECRET || 'fallback_secret_123', // Seguridad adicional
+      process.env.JWT_SECRET || 'fallback_secret_123',
       { expiresIn: '1d' }
     );
 
     // Respuesta (formato que ya usas)
     res.status(200).json({
       message: "Login exitoso",
-      token, // Token incluido explícitamente
+      token, // Token incluido aquí
       user: {
         _id: user._id,
         username: user.username,
@@ -45,9 +44,7 @@ const login = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Error en authController:", error);
-    res.status(500).json({ message: "Error en el servidor" });
+    res.status(500).json({ message: error.message });
   }
 };
-
 module.exports = { login };
