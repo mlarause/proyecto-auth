@@ -7,33 +7,37 @@ const login = async (req, res) => {
     // Validación (igual a tu código actual)
     const { email, password } = req.body;
     if (!email || !password) {
-      return res.status(400).send({ message: "Email y contraseña requeridos" });
+      return res.status(400).json({ message: "Email y contraseña requeridos" });
     }
 
-    // Buscar usuario (sin cambios)
-    const user = await User.findOne({ email });
-    if (!user) return res.status(401).send({ message: "Credenciales inválidas" });
+    // Buscar usuario con contraseña (corrección importante)
+    const user = await User.findOne({ email }).select('+password');
+    if (!user) {
+      return res.status(401).json({ message: "Credenciales inválidas" });
+    }
 
-    // Comparar contraseña (igual que ahora)
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) return res.status(401).send({ message: "Credenciales inválidas" });
+    // Comparar contraseña
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Credenciales inválidas" });
+    }
 
-    // Generar token (AJUSTE CLAVE)
+    // Generar token (CORRECCIÓN DEFINITIVA)
     const token = jwt.sign(
       {
-        userId: user._id.toString(), // Nombre exacto que esperas en otras rutas
+        _id: user._id.toString(), // Usando _id como lo espera tu middleware
         role: user.role
       },
-      process.env.JWT_SECRET || 'fallback_secret', // Seguridad adicional
+      process.env.JWT_SECRET || 'fallback_secret_123', // Seguridad adicional
       { expiresIn: '1d' }
     );
 
     // Respuesta (formato que ya usas)
-    res.status(200).send({
+    res.status(200).json({
       message: "Login exitoso",
-      token, // Token incluido
+      token, // Token incluido explícitamente
       user: {
-        id: user._id,
+        _id: user._id,
         username: user.username,
         email: user.email,
         role: user.role
@@ -41,8 +45,8 @@ const login = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Error en login:", error);
-    res.status(500).send({ message: "Error en el servidor" });
+    console.error("Error en authController:", error);
+    res.status(500).json({ message: "Error en el servidor" });
   }
 };
 
