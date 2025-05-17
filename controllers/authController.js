@@ -4,37 +4,34 @@ const User = require('../models/User');
 
 const login = async (req, res) => {
   try {
-    // 1. Validación (manteniendo tu estilo actual)
-    if (!req.body.email || !req.body.password) {
-      return res.status(400).json({ message: "Email y contraseña requeridos" });
+    // Validación (igual a tu código actual)
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).send({ message: "Email y contraseña requeridos" });
     }
 
-    // 2. Buscar usuario (sin cambios)
-    const user = await User.findOne({ email: req.body.email });
-    if (!user) {
-      return res.status(401).json({ message: "Credenciales inválidas" });
-    }
+    // Buscar usuario (sin cambios)
+    const user = await User.findOne({ email });
+    if (!user) return res.status(401).send({ message: "Credenciales inválidas" });
 
-    // 3. Comparar contraseña (sin cambios)
-    const validPassword = await bcrypt.compare(req.body.password, user.password);
-    if (!validPassword) {
-      return res.status(401).json({ message: "Credenciales inválidas" });
-    }
+    // Comparar contraseña (igual que ahora)
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) return res.status(401).send({ message: "Credenciales inválidas" });
 
-    // 4. Generar token (CORRECCIÓN CLAVE)
+    // Generar token (AJUSTE CLAVE)
     const token = jwt.sign(
       {
-        id: user._id.toString(), // Asegurando que sea string
+        userId: user._id.toString(), // Nombre exacto que esperas en otras rutas
         role: user.role
       },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || 'fallback_secret', // Seguridad adicional
       { expiresIn: '1d' }
     );
 
-    // 5. Responder (formato que ya usas)
-    res.status(200).json({
+    // Respuesta (formato que ya usas)
+    res.status(200).send({
       message: "Login exitoso",
-      token: token, // Token incluido explícitamente
+      token, // Token incluido
       user: {
         id: user._id,
         username: user.username,
@@ -44,7 +41,9 @@ const login = async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Error en login:", error);
+    res.status(500).send({ message: "Error en el servidor" });
   }
 };
+
 module.exports = { login };
