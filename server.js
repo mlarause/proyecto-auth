@@ -18,9 +18,11 @@ connectDB().then(() => {
   
   // Importación dinámica de rutas
   const routes = [
-    { path: '/api/auth', file: './routes/authRoutes' },
-    { path: '/api/users', file: './routes/userRoutes' },
-    { path: '/api/categories', file: './routes/categoryRoutes' }
+  { path: '/api/auth', file: './routes/authRoutes' },
+  { path: '/api/users', file: './routes/userRoutes' },
+  { path: '/api/categories', file: './routes/categoryRoutes' },
+  { path: '/api/subcategories', file: './routes/subcategoryRoutes' }, // Nueva
+  { path: '/api/suppliers', file: './routes/supplierRoutes' } // Nueva
     // Agrega aquí otras rutas
   ];
 

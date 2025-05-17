@@ -1,21 +1,14 @@
 const mongoose = require('mongoose');
-const { Schema } = mongoose;
 
-const SubcategorySchema = new Schema({
-  nombre: {
-    type: String,
-    required: true
-  },
-  descripcion: String,
-  categoria: {
-    type: Schema.Types.ObjectId,
+const SubcategorySchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  description: String,
+  category: { 
+    type: mongoose.Schema.Types.ObjectId, 
     ref: 'Category',
-    required: true
+    required: true 
   },
-  date: {
-    type: Date,
-    default: Date.now
-  }
+  createdAt: { type: Date, default: Date.now }
 });
 
 module.exports = mongoose.model('Subcategory', SubcategorySchema);
