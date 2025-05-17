@@ -1,50 +1,51 @@
-const User = require('../models/User');
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const User = require('../models/User');
 
 const login = async (req, res) => {
   try {
-    // 1. Validar entrada
-    if (!req.body.email || !req.body.password) {
-      return res.status(400).json({ message: "Email y contraseña son requeridos" });
-    }
+    const { email, password } = req.body;
 
-    // 2. Buscar usuario
-    const user = await User.findOne({ email: req.body.email });
+    // 1. Validar que el usuario existe
+    const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ message: "Credenciales inválidas" });
+      return res.status(401).json({ message: 'Credenciales inválidas' });
     }
 
-    // 3. Verificar contraseña
-    const validPassword = await bcrypt.compare(req.body.password, user.password);
-    if (!validPassword) {
-      return res.status(401).json({ message: "Credenciales inválidas" });
+    // 2. Verificar la contraseña
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Credenciales inválidas' });
     }
 
-    // 4. Generar token (corregido)
+    // 3. Crear el payload del token
+    const payload = {
+      id: user._id,
+      role: user.role
+    };
+
+    // 4. Generar el token (corrección clave)
     const token = jwt.sign(
-      {
-        id: user._id,
-        role: user.role
-      },
-      process.env.JWT_SECRET || 'fallback_secret_key', // Seguridad adicional
+      payload,
+      process.env.JWT_SECRET || 'fallback_secret_123', // Asegurar que siempre haya secreto
       { expiresIn: '24h' }
     );
 
     // 5. Enviar respuesta (formato corregido)
     res.status(200).json({
-      token,
+      success: true,
+      token: 'Bearer ' + token, // Formato estándar
       user: {
         id: user._id,
-        username: user.username,
+        name: user.name,
         email: user.email,
         role: user.role
       }
     });
 
   } catch (error) {
-    console.error("Error en login:", error);
-    res.status(500).json({ message: "Error interno del servidor" });
+    console.error('Error en login:', error);
+    res.status(500).json({ message: 'Error en el servidor' });
   }
 };
 
