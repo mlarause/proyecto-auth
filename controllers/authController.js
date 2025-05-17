@@ -4,61 +4,70 @@ const User = require('../models/User');
 
 const login = async (req, res) => {
   try {
-    // Validación mejorada
-    if (!req.body.email || !req.body.password) {
+    // Validación mejorada de entrada
+    const { email, password } = req.body;
+    if (!email || !password) {
       return res.status(400).json({ 
         success: false,
         message: "Email y contraseña son requeridos" 
       });
     }
 
-    // Buscar usuario
-    const user = await User.findOne({ email: req.body.email });
+    // Buscar usuario con manejo de errores
+    const user = await User.findOne({ email }).select('+password');
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "Usuario no encontrado"
+        message: "Credenciales inválidas"
       });
     }
 
-    // Verificar contraseña
-    const validPassword = await bcrypt.compare(req.body.password, user.password);
-    if (!validPassword) {
+    // Comparación de contraseña segura
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
-        message: "Contraseña incorrecta"
+        message: "Credenciales inválidas"
       });
     }
 
-    // Generar token con estructura COMPLETA
+    // Generación del token con estructura completa
+    const tokenPayload = {
+      userId: user._id.toString(),
+      email: user.email,
+      role: user.role || 'user',
+      username: user.username
+    };
+
     const token = jwt.sign(
-      {
-        userId: user._id.toString(), // Asegurar que es string
-        role: user.role,
-        email: user.email
-      },
+      tokenPayload,
       process.env.JWT_SECRET || 'fallback_secret_123',
       { expiresIn: '24h' }
     );
 
-    // Respuesta garantizada
-    res.status(200).json({
+    // Respuesta estructurada
+    const responseData = {
       success: true,
       message: "Autenticación exitosa",
-      token: token, // Token incluido directamente
-      userData: {
-        userId: user._id,
-        username: user.username,
-        email: user.email,
-        role: user.role
+      data: {
+        token,
+        user: {
+          id: user._id,
+          username: user.username,
+          email: user.email,
+          role: user.role
+        }
       }
-    });
+    };
+
+    res.status(200).json(responseData);
 
   } catch (error) {
-    console.error("Error en login:", error);
+    console.error("Error en authController:", error);
     res.status(500).json({
       success: false,
-      message: "Error en el servidor"
+      message: "Error interno del servidor",
+      error: error.message
     });
   }
 };
