@@ -4,38 +4,62 @@ const User = require('../models/User');
 
 const login = async (req, res) => {
   try {
-    // 1. Buscar usuario (sin cambiar validaciones existentes)
+    // Validación mejorada
+    if (!req.body.email || !req.body.password) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Email y contraseña son requeridos" 
+      });
+    }
+
+    // Buscar usuario
     const user = await User.findOne({ email: req.body.email });
-    if (!user) return res.status(401).json({ message: "Credenciales inválidas" });
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Usuario no encontrado"
+      });
+    }
 
-    // 2. Comparar contraseña (manteniendo tu lógica actual)
-    const validPass = await bcrypt.compare(req.body.password, user.password);
-    if (!validPass) return res.status(401).json({ message: "Credenciales inválidas" });
+    // Verificar contraseña
+    const validPassword = await bcrypt.compare(req.body.password, user.password);
+    if (!validPassword) {
+      return res.status(401).json({
+        success: false,
+        message: "Contraseña incorrecta"
+      });
+    }
 
-    // 3. Generar token (ÚNICO CAMBIO ESENCIAL)
+    // Generar token con estructura COMPLETA
     const token = jwt.sign(
-      { 
-        id: user._id,
-        role: user.role || 'user' // Fallback por si no existe
-      }, 
-      process.env.JWT_SECRET || 'fallback_secret_123', // Seguridad
+      {
+        userId: user._id.toString(), // Asegurar que es string
+        role: user.role,
+        email: user.email
+      },
+      process.env.JWT_SECRET || 'fallback_secret_123',
       { expiresIn: '24h' }
     );
 
-    // 4. Responder (manteniendo tu formato actual pero asegurando el token)
+    // Respuesta garantizada
     res.status(200).json({
-      token, // Asegurando que se envía el token
-      user: {
-        id: user._id,
-        username: user.username, // Usando username en lugar de name
+      success: true,
+      message: "Autenticación exitosa",
+      token: token, // Token incluido directamente
+      userData: {
+        userId: user._id,
+        username: user.username,
         email: user.email,
         role: user.role
       }
     });
 
-  } catch (err) {
-    console.error("Login error:", err);
-    res.status(500).json({ message: "Error en el servidor" });
+  } catch (error) {
+    console.error("Error en login:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error en el servidor"
+    });
   }
 };
 
