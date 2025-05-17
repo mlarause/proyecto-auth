@@ -1,129 +1,61 @@
 const Supplier = require('../models/Supplier');
+const jwt = require('jsonwebtoken');
 
-module.exports = {
-  // Crear un nuevo proveedor
-  createSupplier: async (req, res) => {
-    try {
-      const supplier = new Supplier({
-        name: req.body.name,
-        contact: req.body.contact,
-        phone: req.body.phone,
-        address: req.body.address,
-        email: req.body.email
-      });
+// Crear proveedor
+exports.createSupplier = async (req, res) => {
+  try {
+    // Verificación de token
+    const token = req.headers['x-access-token'] || req.body.token;
+    if (!token) return res.status(403).json({ message: "No se proporcionó token" });
 
-      await supplier.save();
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.userId = decoded.id;
 
-      res.status(201).json({
-        success: true,
-        supplier: supplier
-      });
+    // Lógica principal
+    const newSupplier = new Supplier({
+      ...req.body,
+      createdBy: req.userId
+    });
 
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: 'Error al crear proveedor',
-        error: error.message
-      });
+    await newSupplier.save();
+    res.status(201).json(newSupplier);
+  } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ message: "Token inválido" });
     }
-  },
+    res.status(500).json({ message: error.message });
+  }
+};
 
-  // Obtener todos los proveedores
-  getAllSuppliers: async (req, res) => {
-    try {
-      const suppliers = await Supplier.find().sort({ name: 1 });
-      res.status(200).json({
-        success: true,
-        suppliers: suppliers
-      });
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: 'Error al obtener proveedores',
-        error: error.message
-      });
+// Actualizar proveedor
+exports.updateSupplier = async (req, res) => {
+  try {
+    // Verificación de token
+    const token = req.headers['x-access-token'] || req.body.token;
+    if (!token) return res.status(403).json({ message: "No se proporcionó token" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.userId = decoded.id;
+
+    // Lógica principal
+    const supplier = await Supplier.findById(req.params.id);
+    if (!supplier) return res.status(404).json({ message: "Proveedor no encontrado" });
+
+    if (supplier.createdBy.toString() !== req.userId) {
+      return res.status(403).json({ message: "No autorizado" });
     }
-  },
 
-  // Obtener un proveedor por ID
-  getSupplierById: async (req, res) => {
-    try {
-      const supplier = await Supplier.findById(req.params.id);
-      
-      if (!supplier) {
-        return res.status(404).json({
-          success: false,
-          message: 'Proveedor no encontrado'
-        });
-      }
+    const updatedSupplier = await Supplier.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
 
-      res.status(200).json({
-        success: true,
-        supplier: supplier
-      });
-
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: 'Error al obtener proveedor',
-        error: error.message
-      });
+    res.json(updatedSupplier);
+  } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ message: "Token inválido" });
     }
-  },
-
-  // Actualizar un proveedor
-  updateSupplier: async (req, res) => {
-    try {
-      const supplier = await Supplier.findByIdAndUpdate(
-        req.params.id,
-        req.body,
-        { new: true, runValidators: true }
-      );
-
-      if (!supplier) {
-        return res.status(404).json({
-          success: false,
-          message: 'Proveedor no encontrado'
-        });
-      }
-
-      res.status(200).json({
-        success: true,
-        supplier: supplier
-      });
-
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: 'Error al actualizar proveedor',
-        error: error.message
-      });
-    }
-  },
-
-  // Eliminar un proveedor
-  deleteSupplier: async (req, res) => {
-    try {
-      const supplier = await Supplier.findByIdAndDelete(req.params.id);
-
-      if (!supplier) {
-        return res.status(404).json({
-          success: false,
-          message: 'Proveedor no encontrado'
-        });
-      }
-
-      res.status(200).json({
-        success: true,
-        message: 'Proveedor eliminado correctamente'
-      });
-
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: 'Error al eliminar proveedor',
-        error: error.message
-      });
-    }
+    res.status(500).json({ message: error.message });
   }
 };

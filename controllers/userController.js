@@ -1,190 +1,57 @@
 const User = require('../models/User');
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const config = require('../config/auth.config');
 
-/**
- * Registra un nuevo usuario (público)
- */
-exports.register = async (req, res) => {
-  try {
-    const hashedPassword = await bcrypt.hash(req.body.password, 10);
-    
-    const user = new User({
-      username: req.body.username,
-      email: req.body.email,
-      password: hashedPassword,
-      rol: req.body.rol || 'auxiliar' // Valor por defecto
-    });
-
-    await user.save();
-
-    // Generar token JWT
-    const token = jwt.sign({ id: user._id }, config.secret, {
-      expiresIn: 86400 // 24 horas
-    });
-
-    res.status(201).json({
-      success: true,
-      message: "Usuario registrado exitosamente",
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        rol: user.rol
-      },
-      accessToken: token
-    });
-
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error en el servidor",
-      error: error.message
-    });
-  }
-};
-
-/**
- * Obtiene todos los usuarios (requiere admin)
- */
-exports.getAllUsers = async (req, res) => {
-  try {
-    const users = await User.find().select('-password');
-    res.status(200).json({
-      success: true,
-      users: users
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-};
-
-/**
- * Crea un usuario (admin only)
- */
-exports.createUser = async (req, res) => {
-  try {
-    const hashedPassword = await bcrypt.hash(req.body.password, 10);
-    
-    const user = new User({
-      username: req.body.username,
-      email: req.body.email,
-      password: hashedPassword,
-      rol: req.body.rol
-    });
-
-    await user.save();
-
-    res.status(201).json({
-      success: true,
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        rol: user.rol
-      }
-    });
-
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-};
-
-/**
- * Actualiza un usuario (admin only)
- */
+// Actualizar usuario
 exports.updateUser = async (req, res) => {
   try {
-    const updateData = { ...req.body };
-    
-    // Encriptar contraseña si se proporciona
-    if (updateData.password) {
-      updateData.password = await bcrypt.hash(updateData.password, 10);
+    // Verificación de token
+    const token = req.headers['x-access-token'] || req.body.token;
+    if (!token) return res.status(403).json({ message: "No se proporcionó token" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.userId = decoded.id;
+
+    // Lógica principal
+    if (req.params.id !== req.userId) {
+      return res.status(403).json({ message: "No autorizado" });
     }
 
-    const user = await User.findByIdAndUpdate(
+    const updatedUser = await User.findByIdAndUpdate(
       req.params.id,
-      updateData,
+      req.body,
       { new: true }
-    ).select('-password');
+    );
 
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "Usuario no encontrado"
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      user: user
-    });
-
+    res.json(updatedUser);
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ message: "Token inválido" });
+    }
+    res.status(500).json({ message: error.message });
   }
 };
 
-/**
- * Elimina un usuario (admin only)
- */
+// Eliminar usuario
 exports.deleteUser = async (req, res) => {
   try {
-    const user = await User.findByIdAndDelete(req.params.id);
+    // Verificación de token
+    const token = req.headers['x-access-token'] || req.body.token;
+    if (!token) return res.status(403).json({ message: "No se proporcionó token" });
 
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "Usuario no encontrado"
-      });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.userId = decoded.id;
+
+    // Lógica principal
+    if (req.params.id !== req.userId) {
+      return res.status(403).json({ message: "No autorizado" });
     }
 
-    res.status(200).json({
-      success: true,
-      message: "Usuario eliminado correctamente"
-    });
-
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ message: "Usuario eliminado" });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-};
-
-/**
- * Obtiene un usuario por ID (admin/coordinador)
- */
-exports.getUserById = async (req, res) => {
-  try {
-    const user = await User.findById(req.params.id).select('-password');
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "Usuario no encontrado"
-      });
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ message: "Token inválido" });
     }
-
-    res.status(200).json({
-      success: true,
-      user: user
-    });
-
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
+    res.status(500).json({ message: error.message });
   }
 };

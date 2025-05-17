@@ -1,61 +1,61 @@
 const Category = require('../models/Category');
+const jwt = require('jsonwebtoken');
 
-exports.create = async (req, res) => {
+// Crear categoría
+exports.createCategory = async (req, res) => {
   try {
-    const { nombre, descripcion } = req.body;
-    const categoria = new Category({ nombre, descripcion });
-    await categoria.save();
-    res.status(201).json(categoria);
+    // Verificación de token
+    const token = req.headers['x-access-token'] || req.body.token;
+    if (!token) return res.status(403).json({ message: "No se proporcionó token" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.userId = decoded.id;
+
+    // Lógica principal
+    const newCategory = new Category({
+      ...req.body,
+      createdBy: req.userId
+    });
+
+    await newCategory.save();
+    res.status(201).json(newCategory);
   } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-};
-
-exports.findAll = async (req, res) => {
-  try {
-    const categorias = await Category.find();
-    res.json(categorias);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-exports.findOne = async (req, res) => {
-  try {
-    const categoria = await Category.findById(req.params.id);
-    if (!categoria) {
-      return res.status(404).json({ message: 'Categoría no encontrada' });
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ message: "Token inválido" });
     }
-    res.json(categoria);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
-exports.update = async (req, res) => {
+// Actualizar categoría
+exports.updateCategory = async (req, res) => {
   try {
-    const categoria = await Category.findByIdAndUpdate(
+    // Verificación de token
+    const token = req.headers['x-access-token'] || req.body.token;
+    if (!token) return res.status(403).json({ message: "No se proporcionó token" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.userId = decoded.id;
+
+    // Lógica principal
+    const category = await Category.findById(req.params.id);
+    if (!category) return res.status(404).json({ message: "Categoría no encontrada" });
+
+    if (category.createdBy.toString() !== req.userId) {
+      return res.status(403).json({ message: "No autorizado" });
+    }
+
+    const updatedCategory = await Category.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true }
     );
-    if (!categoria) {
-      return res.status(404).json({ message: 'Categoría no encontrada' });
-    }
-    res.json(categoria);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-};
 
-exports.delete = async (req, res) => {
-  try {
-    const categoria = await Category.findByIdAndDelete(req.params.id);
-    if (!categoria) {
-      return res.status(404).json({ message: 'Categoría no encontrada' });
-    }
-    res.json({ message: 'Categoría eliminada correctamente' });
+    res.json(updatedCategory);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ message: "Token inválido" });
+    }
+    res.status(500).json({ message: error.message });
   }
 };
