@@ -5,7 +5,7 @@ const { checkRole } = require('../middlewares/role');
 const {
   createProduct,
   getProductsBySubCategory
-} = require('../controllers/product.controller');
+} = require('../controllers/productcontroller');
 
 // Admin y Coordinador pueden crear
 router.post('/', verifyToken, checkRole(['admin', 'coordinador']), createProduct);
