@@ -5,7 +5,7 @@ const { checkRole } = require('../middlewares/role');
 const {
   createSubCategory,
   getSubCategoriesByCategory
-} = require('../controllers/subcategory.controller');
+} = require('../controllers/subcategorycontroller');
 
 // Admin y Coordinador pueden crear
 router.post('/', verifyToken, checkRole(['admin', 'coordinador']), createSubCategory);
