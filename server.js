@@ -1,47 +1,35 @@
-require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
-const morgan = require('morgan');
-const { connectDB } = require('./database');
+const mongoose = require('mongoose');
+const dotenv = require('dotenv');
 
+// Configuración inicial
+dotenv.config();
 const app = express();
 
-// Middlewares básicos
-app.use(cors());
-app.use(morgan('dev'));
+// Middlewares
 app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
 
 // Conexión a MongoDB
-connectDB().then(() => {
-  console.log('✅ MongoDB conectado correctamente');
-  
-  // Importación dinámica de rutas
-  const routes = [
-  { path: '/api/auth', file: './routes/authRoutes' },
-  { path: '/api/users', file: './routes/userRoutes' },
-  { path: '/api/categories', file: './routes/categoryRoutes' },
-  { path: '/api/subcategories', file: './routes/subcategoryRoutes' }, // Nueva
-  { path: '/api/suppliers', file: './routes/supplierRoutes' } // Nueva
-    // Agrega aquí otras rutas
-  ];
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/proyecto-auth')
+  .then(() => console.log('✅ MongoDB conectado correctamente'))
+  .catch(err => console.log('❌ Error de conexión a MongoDB:', err));
 
-  routes.forEach(route => {
-    try {
-      const router = require(route.file);
-      app.use(route.path, router);
-      console.log(`✅ Ruta ${route.path} cargada correctamente`);
-    } catch (err) {
-      console.error(`⚠️ Error cargando ${route.path}:`, err.message);
-    }
-  });
+// Importar rutas
+const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
+const categoryRoutes = require('./routes/categoryRoutes');
+const subcategoryRoutes = require('./routes/subcategoryRoutes');
+const supplierRoutes = require('./routes/supplierRoutes');
 
-  const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => {
-    console.log(`🚀 Servidor ejecutándose en http://localhost:${PORT}`);
-  });
+// Usar rutas
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/subcategories', subcategoryRoutes);
+app.use('/api/suppliers', supplierRoutes);
 
-}).catch(err => {
-  console.error('❌ Error fatal al iniciar:', err.message);
-  process.exit(1);
+// Iniciar servidor
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor ejecutándose en http://localhost:${PORT}`);
 });
