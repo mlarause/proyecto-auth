@@ -55,18 +55,30 @@ exports.deleteUser = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 
-  exports.getAllUsers = async (req, res) => {
+  xports.getAllUsers = async (req, res) => {
   try {
-    // Verificar rol de admin
-    if (req.userRole !== 'admin') {
+    // 1. Verificar rol de administrador
+    if (req.user.role !== 'admin') {
       return res.status(403).json({ message: "Acceso no autorizado" });
     }
 
-    const users = await User.find({}, '-password');
-    res.json(users);
+    // 2. Obtener usuarios (excluyendo contraseñas)
+    const users = await User.find().select('-password');
+    
+    // 3. Enviar respuesta
+    res.json({
+      success: true,
+      count: users.length,
+      data: users
+    });
+    
   } catch (error) {
-    console.error("Error obteniendo usuarios:", error);
-    res.status(500).json({ message: "Error del servidor" });
+    console.error("Error in getAllUsers:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Error del servidor",
+      error: error.message 
+    });
   }
 };
 };
