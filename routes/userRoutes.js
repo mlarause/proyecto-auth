@@ -3,22 +3,28 @@ const router = express.Router();
 const userController = require('../controllers/userController');
 const verifyToken = require('../middlewares/auth');
 
-// Obtener todos los usuarios (admin)
-router.get('/', verifyToken, userController.getAllUsers);
+// Ruta para obtener todos los usuarios (solo admin)
+router.get('/', 
+  verifyToken,
+  (req, res, next) => {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: "Acceso no autorizado" });
+    }
+    next();
+  },
+  userController.getAllUsers
+);
 
-// Obtener usuario por ID
-router.get('/:id', verifyToken, userController.getUserById);
+// Ruta para obtener un usuario específico
+router.get('/:id',
+  verifyToken,
+  userController.getUserById
+);
 
-// Crear usuario (admin)
-router.post('/', verifyToken, userController.createUser);
-
-// Actualizar usuario
-router.put('/:id', verifyToken, userController.updateUser);
-
-// Eliminar usuario (admin)
-router.delete('/:id', verifyToken, userController.deleteUser);
-
-// Cambiar contraseña
-router.post('/:id/change-password', verifyToken, userController.changePassword);
+// Ruta para actualizar usuario
+router.put('/:id',
+  verifyToken,
+  userController.updateUser
+);
 
 module.exports = router;
