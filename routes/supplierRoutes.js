@@ -5,7 +5,7 @@ const { checkRole } = require('../middlewares/role');
 const {
   createSupplier,
   getAllSuppliers
-} = require('../controllers/supplier.controller');
+} = require('../controllers/suppliercontroller');
 
 // Admin y Coordinador pueden crear
 router.post('/', verifyToken, checkRole(['admin', 'coordinador']), createSupplier);
