@@ -25,3 +25,32 @@ proyecto-auth/
 ├── database.js
 ├── package.json
 └── server.js
+
+
+
+controllers/
+├── auth.controller.js       # (Ya existe, login/registro)
+├── user.controller.js       # CRUD usuarios
+├── category.controller.js   # CRUD categorías
+├── subcategory.controller.js # CRUD subcategorías (relacionadas con categorías)
+├── product.controller.js    # CRUD productos (relacionados con subcategorías y proveedores)
+└── supplier.controller.js   # CRUD proveedores
+
+models/
+├── User.js                  # (Ya existe)
+├── Category.js              # Modelo categorías
+├── SubCategory.js           # Modelo subcategorías
+├── Product.js               # Modelo productos
+└── Supplier.js              # Modelo proveedores
+
+routes/
+├── auth.routes.js           # (Ya existe, rutas de login/registro)
+├── user.routes.js           # Rutas usuarios
+├── category.routes.js       # Rutas categorías
+├── subcategory.routes.js    # Rutas subcategorías
+├── product.routes.js        # Rutas productos
+└── supplier.routes.js       # Rutas proveedores
+
+middlewares/
+├── auth.js                  # Middleware de autenticación JWT (ya existe)
+└── role.js                  # Middleware para validar roles (Admin, Coordinador, Auxiliar)
