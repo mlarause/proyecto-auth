@@ -1,41 +1,51 @@
-const mongoose = require('mongoose');
-const { Schema } = mongoose;
+const mongoose = require("mongoose");
 
-const ProductSchema = new Schema({
-  nombre: {
+const ProductSchema = new mongoose.Schema({
+  name: {
     type: String,
-    required: true
+    required: true,
+    trim: true,
   },
-  descripcion: String,
-  precio: {
+  description: {
+    type: String,
+    default: "",
+  },
+  price: {
     type: Number,
     required: true,
-    min: 0
-  },
-  categoria: {
-    type: Schema.Types.ObjectId,
-    ref: 'Category',
-    required: true
-  },
-  subcategoria: {
-    type: Schema.Types.ObjectId,
-    ref: 'Subcategory',
-    required: true
-  },
-  proveedor: {
-    type: Schema.Types.ObjectId,
-    ref: 'Supplier',
-    required: true
+    min: 0,
   },
   stock: {
     type: Number,
+    required: true,
+    min: 0,
     default: 0,
-    min: 0
   },
-  date: {
-    type: Date,
-    default: Date.now
-  }
+  category: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Category",
+    required: true,
+  },
+  subcategory: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "SubCategory",
+    required: true,
+  },
+  supplier: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Supplier",
+    required: true,
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
+}, { 
+  timestamps: true,
 });
 
-module.exports = mongoose.model('Product', ProductSchema);
+// Validación para evitar productos duplicados bajo una misma subcategoría
+ProductSchema.index({ name: 1, subcategory: 1 }, { unique: true });
+
+module.exports = mongoose.model("Product", ProductSchema);
