@@ -1,9 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const supplierController = require('../controllers/supplierController');
+const { verifyToken } = require('../middlewares/auth');
+const { checkRole } = require('../middlewares/role');
+const {
+  createSupplier,
+  getAllSuppliers
+} = require('../controllers/supplier.controller');
 
-// Rutas de proveedores
-router.get('/', supplierController.getAllSuppliers);
-router.post('/', supplierController.createSupplier);
+// Admin y Coordinador pueden crear
+router.post('/', verifyToken, checkRole(['admin', 'coordinador']), createSupplier);
+
+// Todos los roles pueden leer
+router.get('/', verifyToken, getAllSuppliers);
 
 module.exports = router;
