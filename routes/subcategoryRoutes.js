@@ -1,12 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const subcategoryController = require('../controllers/subcategoryController');
-const { verifyToken, isAdmin } = require('../middlewares/authJwt');
+const { verifyToken } = require('../middlewares/auth');
+const { checkRole } = require('../middlewares/role');
+const {
+  createSubCategory,
+  getSubCategoriesByCategory
+} = require('../controllers/subcategory.controller');
 
-router.post('/', verifyToken, isAdmin, subcategoryController.createSubcategory);
-router.get('/', subcategoryController.getAllSubcategories);
-router.get('/:id', subcategoryController.getSubcategoryById);
-router.put('/:id', verifyToken, isAdmin, subcategoryController.updateSubcategory);
-router.delete('/:id', verifyToken, isAdmin, subcategoryController.deleteSubcategory);
+// Admin y Coordinador pueden crear
+router.post('/', verifyToken, checkRole(['admin', 'coordinador']), createSubCategory);
+
+// Todos los roles pueden leer
+router.get('/by-category/:categoryId', verifyToken, getSubCategoriesByCategory);
 
 module.exports = router;
