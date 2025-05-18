@@ -1,35 +1,27 @@
 const express = require('express');
-const mongoose = require('mongoose');
-const dotenv = require('dotenv');
-
-// Configuración inicial
-dotenv.config();
 const app = express();
+
+// Importar rutas
+const authRoutes = require('./routes/auth.routes');
+const userRoutes = require('./routes/user.routes');
+const categoryRoutes = require('./routes/category.routes');
+const subcategoryRoutes = require('./routes/subcategory.routes');
+const productRoutes = require('./routes/product.routes');
+const supplierRoutes = require('./routes/supplier.routes');
 
 // Middlewares
 app.use(express.json());
 
-// Conexión a MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/proyecto-auth')
-  .then(() => console.log('✅ MongoDB conectado correctamente'))
-  .catch(err => console.log('❌ Error de conexión a MongoDB:', err));
-
-// Importar rutas
-const authRoutes = require('./routes/authRoutes');
-const userRoutes = require('./routes/userRoutes');
-const categoryRoutes = require('./routes/categoryRoutes');
-const subcategoryRoutes = require('./routes/subcategoryRoutes');
-const supplierRoutes = require('./routes/supplierRoutes');
-
-// Usar rutas
+// Rutas
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/subcategories', subcategoryRoutes);
+app.use('/api/products', productRoutes);
 app.use('/api/suppliers', supplierRoutes);
 
 // Iniciar servidor
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor ejecutándose en http://localhost:${PORT}`);
+  console.log(`Servidor corriendo en puerto ${PORT}`);
 });
