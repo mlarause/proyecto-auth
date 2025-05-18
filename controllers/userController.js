@@ -272,4 +272,44 @@ exports.getUserProfile = async (req, res) => {
       error: error.message 
     });
   }
+
+  const updateUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { username, email } = req.body;
+
+        // Verifica si el ID es válido antes de usarlo
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: "ID de usuario no válido",
+            });
+        }
+
+        const updatedUser = await User.findByIdAndUpdate(
+            id,
+            { username, email },
+            { new: true }
+        );
+
+        if (!updatedUser) {
+            return res.status(404).json({
+                success: false,
+                message: "Usuario no encontrado",
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Usuario actualizado correctamente",
+            data: updatedUser,
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error al actualizar usuario",
+            error: error.message, // Mejor para debugging
+        });
+    }
+};
 };
