@@ -1,61 +1,102 @@
-const Category = require('../models/Category');
-const jwt = require('jsonwebtoken');
+const Category = require("../models/Category");
+const { validatePermissions } = require("../utils/roleValidation");
 
-// Crear categoría
+// Crear categoría (Admin o Coordinador)
 exports.createCategory = async (req, res) => {
   try {
-    // Verificación de token
-    const token = req.headers['x-access-token'] || req.body.token;
-    if (!token) return res.status(403).json({ message: "No se proporcionó token" });
+    validatePermissions(req.user.role, ["admin", "coordinador"]);
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.userId = decoded.id;
-
-    // Lógica principal
-    const newCategory = new Category({
-      ...req.body,
-      createdBy: req.userId
+    const { name, description } = req.body;
+    const newCategory = await Category.create({
+      name,
+      description,
+      createdBy: req.user.id,
     });
 
-    await newCategory.save();
-    res.status(201).json(newCategory);
+    res.status(201).json({
+      success: true,
+      data: newCategory,
+    });
   } catch (error) {
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ message: "Token inválido" });
-    }
-    res.status(500).json({ message: error.message });
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
-// Actualizar categoría
+// Obtener todas las categorías (Todos los roles)
+exports.getAllCategories = async (req, res) => {
+  try {
+    const categories = await Category.find().populate("createdBy", "username");
+    res.status(200).json({
+      success: true,
+      data: categories,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error al obtener categorías",
+    });
+  }
+};
+
+// Actualizar categoría (Admin o Coordinador)
 exports.updateCategory = async (req, res) => {
   try {
-    // Verificación de token
-    const token = req.headers['x-access-token'] || req.body.token;
-    if (!token) return res.status(403).json({ message: "No se proporcionó token" });
+    validatePermissions(req.user.role, ["admin", "coordinador"]);
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.userId = decoded.id;
-
-    // Lógica principal
-    const category = await Category.findById(req.params.id);
-    if (!category) return res.status(404).json({ message: "Categoría no encontrada" });
-
-    if (category.createdBy.toString() !== req.userId) {
-      return res.status(403).json({ message: "No autorizado" });
-    }
+    const { id } = req.params;
+    const { name, description } = req.body;
 
     const updatedCategory = await Category.findByIdAndUpdate(
-      req.params.id,
-      req.body,
+      id,
+      { name, description },
       { new: true }
     );
 
-    res.json(updatedCategory);
-  } catch (error) {
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ message: "Token inválido" });
+    if (!updatedCategory) {
+      return res.status(404).json({
+        success: false,
+        message: "Categoría no encontrada",
+      });
     }
-    res.status(500).json({ message: error.message });
+
+    res.status(200).json({
+      success: true,
+      data: updatedCategory,
+    });
+  } catch (error) {
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Eliminar categoría (Solo Admin)
+exports.deleteCategory = async (req, res) => {
+  try {
+    validatePermissions(req.user.role, ["admin"]);
+
+    const { id } = req.params;
+    const deletedCategory = await Category.findByIdAndDelete(id);
+
+    if (!deletedCategory) {
+      return res.status(404).json({
+        success: false,
+        message: "Categoría no encontrada",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Categoría eliminada correctamente",
+    });
+  } catch (error) {
+    res.status(error.status || 500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
