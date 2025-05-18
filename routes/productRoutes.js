@@ -1,21 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const productController = require('../controllers/productController');
-const { verifyToken, isAdmin, isCoordinadorOrAdmin } = require('../middlewares/authJwt');
+const { verifyToken } = require('../middlewares/auth');
+const { checkRole } = require('../middlewares/role');
+const {
+  createProduct,
+  getProductsBySubCategory
+} = require('../controllers/product.controller');
 
-// Crear producto (Solo admin)
-router.post('/', [verifyToken, isAdmin], productController.create);
+// Admin y Coordinador pueden crear
+router.post('/', verifyToken, checkRole(['admin', 'coordinador']), createProduct);
 
-// Obtener todos los productos (Todos los roles autenticados)
-router.get('/', [verifyToken], productController.findAll);
-
-// Obtener un producto específico
-router.get('/:id', [verifyToken], productController.findOne);
-
-// Actualizar producto (Admin y coordinador)
-router.put('/:id', [verifyToken, isCoordinadorOrAdmin], productController.update);
-
-// Eliminar producto (Solo admin)
-router.delete('/:id', [verifyToken, isAdmin], productController.delete);
+// Todos los roles pueden leer
+router.get('/by-subcategory/:subcategoryId', verifyToken, getProductsBySubCategory);
 
 module.exports = router;
