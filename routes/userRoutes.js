@@ -16,13 +16,13 @@ router.get('/',
 );
 
 // Ruta para obtener un usuario específico
-router.get('/:id', 
+router.get('/:id',
   verifyToken,
-  userController.getUser
+  userController.getUserById
 );
 
 // Ruta para actualizar usuario
-router.put('/:id', 
+router.put('/:id',
   verifyToken,
   userController.updateUser
 );
