@@ -1,4 +1,4 @@
-const SubCategory = require("../models/SubCategory");
+const SubCategory = require("../models/Subcategory");
 const Category = require("../models/Category");
 const { validatePermissions } = require("../utils/roleValidation");
 
