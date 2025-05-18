@@ -7,7 +7,7 @@ const {
   getAllCategories,
   updateCategory,
   deleteCategory
-} = require('../controllers/category.controller');
+} = require('../controllers/categorycontroller');
 
 // Admin y Coordinador pueden crear/modificar/eliminar
 router.post('/', verifyToken, checkRole(['admin', 'coordinador']), createCategory);
