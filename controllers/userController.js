@@ -54,4 +54,19 @@ exports.deleteUser = async (req, res) => {
     }
     res.status(500).json({ message: error.message });
   }
+
+  exports.getAllUsers = async (req, res) => {
+  try {
+    // Verificar rol de admin
+    if (req.userRole !== 'admin') {
+      return res.status(403).json({ message: "Acceso no autorizado" });
+    }
+
+    const users = await User.find({}, '-password');
+    res.json(users);
+  } catch (error) {
+    console.error("Error obteniendo usuarios:", error);
+    res.status(500).json({ message: "Error del servidor" });
+  }
+};
 };
