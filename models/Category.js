@@ -1,17 +1,26 @@
-const mongoose = require('mongoose');
-const { Schema } = mongoose;
+const mongoose = require("mongoose");
 
-const CategorySchema = new Schema({
-  nombre: {
+const CategorySchema = new mongoose.Schema({
+  name: {
     type: String,
     required: true,
-    unique: true
+    unique: true,
+    trim: true,
   },
-  descripcion: String,
-  date: {
-    type: Date,
-    default: Date.now
-  }
+  description: {
+    type: String,
+    default: "",
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
+}, { 
+  timestamps: true,
 });
 
-module.exports = mongoose.model('Category', CategorySchema);
+// Validación para evitar categorías duplicadas
+CategorySchema.index({ name: 1 }, { unique: true });
+
+module.exports = mongoose.model("Category", CategorySchema);
