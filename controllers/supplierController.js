@@ -1,240 +1,77 @@
-const Supplier = require('../models/Supplier');
-const Product = require('../models/Product');
+const Supplier = require("../models/Supplier");
 
-/**
- * @desc    Crear un nuevo proveedor
- * @route   POST /api/suppliers
- * @access  Privado (Admin/Coordinador)
- */
+// Crear proveedor
 exports.createSupplier = async (req, res) => {
   try {
     const { name, contact, email, phone, address, products } = req.body;
-
-    // Validación manual de productos
-    const validProducts = await Product.find({ _id: { $in: products } });
-    if (validProducts.length !== products.length) {
-      return res.status(400).json({
-        success: false,
-        message: 'Algunos productos no existen'
-      });
-    }
-
-    // Crear proveedor
-    const supplier = new Supplier({
+    
+    const newSupplier = new Supplier({
       name,
       contact,
       email,
       phone,
       address,
       products,
-      createdBy: req.user._id
+      createdBy: req.userId // Opcional: guardar quién lo creó
     });
 
-    await supplier.save();
-
-    // Respuesta exitosa
-    res.status(201).json({
-      success: true,
-      data: {
-        ...supplier.toObject(),
-        products: validProducts.map(p => ({ _id: p._id, name: p.name }))
-      }
-    });
-
+    await newSupplier.save();
+    res.status(201).json({ success: true, data: newSupplier });
   } catch (error) {
-    console.error('Error en createSupplier:', error);
-    
-    if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: 'El proveedor ya existe (nombre o email duplicado)'
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      message: 'Error al crear proveedor'
-    });
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
-/**
- * @desc    Obtener todos los proveedores
- * @route   GET /api/suppliers
- * @access  Privado (Admin/Coordinador/Auxiliar)
- */
-exports.getSuppliers = async (req, res) => {
+// Obtener todos los proveedores
+exports.getAllSuppliers = async (req, res) => {
   try {
-    const suppliers = await Supplier.find()
-      .populate('products', 'name')
-      .populate('createdBy', 'name');
-
-    res.status(200).json({
-      success: true,
-      count: suppliers.length,
-      data: suppliers
-    });
-
+    const suppliers = await Supplier.find();
+    res.status(200).json({ success: true, data: suppliers });
   } catch (error) {
-    console.error('Error en getSuppliers:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al obtener proveedores'
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-/**
- * @desc    Obtener proveedor por ID
- * @route   GET /api/suppliers/:id
- * @access  Privado (Admin/Coordinador/Auxiliar)
- */
+// Obtener un proveedor por ID
 exports.getSupplierById = async (req, res) => {
   try {
-    const supplier = await Supplier.findById(req.params.id)
-      .populate('products', 'name price')
-      .populate('createdBy', 'name email');
-
+    const supplier = await Supplier.findById(req.params.id);
     if (!supplier) {
-      return res.status(404).json({
-        success: false,
-        message: 'Proveedor no encontrado'
-      });
+      return res.status(404).json({ success: false, message: "Proveedor no encontrado" });
     }
-
-    res.status(200).json({
-      success: true,
-      data: supplier
-    });
-
+    res.status(200).json({ success: true, data: supplier });
   } catch (error) {
-    console.error('Error en getSupplierById:', error);
-    
-    if (error.name === 'CastError') {
-      return res.status(400).json({
-        success: false,
-        message: 'ID de proveedor inválido'
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      message: 'Error al obtener proveedor'
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-/**
- * @desc    Actualizar proveedor
- * @route   PUT /api/suppliers/:id
- * @access  Privado (Admin/Coordinador)
- */
+// Actualizar proveedor
 exports.updateSupplier = async (req, res) => {
   try {
-    const { products, ...updateData } = req.body;
-
-    // Validar productos si se envían
-    if (products) {
-      const productsExist = await Product.countDocuments({ _id: { $in: products } });
-      if (productsExist !== products.length) {
-        return res.status(400).json({
-          success: false,
-          message: 'Uno o más productos no existen'
-        });
-      }
-      updateData.products = products;
-    }
-
-    // Actualizar proveedor
     const updatedSupplier = await Supplier.findByIdAndUpdate(
       req.params.id,
-      updateData,
+      req.body,
       { new: true, runValidators: true }
-    )
-    .populate('products', 'name')
-    .populate('createdBy', 'name email');
+    );
 
     if (!updatedSupplier) {
-      return res.status(404).json({
-        success: false,
-        message: 'Proveedor no encontrado'
-      });
+      return res.status(404).json({ success: false, message: "Proveedor no encontrado" });
     }
-
-    res.status(200).json({
-      success: true,
-      data: updatedSupplier
-    });
-
+    res.status(200).json({ success: true, data: updatedSupplier });
   } catch (error) {
-    console.error('Error en updateSupplier:', error);
-    
-    if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: 'El nombre o email ya está en uso'
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      message: 'Error al actualizar proveedor'
-    });
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
-/**
- * @desc    Eliminar proveedor
- * @route   DELETE /api/suppliers/:id
- * @access  Privado (Admin)
- */
+// Eliminar proveedor
 exports.deleteSupplier = async (req, res) => {
   try {
-    const supplier = await Supplier.findByIdAndDelete(req.params.id);
-
-    if (!supplier) {
-      return res.status(404).json({
-        success: false,
-        message: 'Proveedor no encontrado'
-      });
+    const deletedSupplier = await Supplier.findByIdAndDelete(req.params.id);
+    if (!deletedSupplier) {
+      return res.status(404).json({ success: false, message: "Proveedor no encontrado" });
     }
-
-    res.status(200).json({
-      success: true,
-      data: supplier
-    });
-
+    res.status(200).json({ success: true, message: "Proveedor eliminado" });
   } catch (error) {
-    console.error('Error en deleteSupplier:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al eliminar proveedor'
-    });
-  }
-};
-
-/**
- * @desc    Obtener proveedores por producto
- * @route   GET /api/suppliers/product/:productId
- * @access  Privado (Admin/Coordinador/Auxiliar)
- */
-exports.getSuppliersByProduct = async (req, res) => {
-  try {
-    const suppliers = await Supplier.find({ products: req.params.productId })
-      .populate('products', 'name')
-      .populate('createdBy', 'name');
-
-    res.status(200).json({
-      success: true,
-      count: suppliers.length,
-      data: suppliers
-    });
-
-  } catch (error) {
-    console.error('Error en getSuppliersByProduct:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al obtener proveedores por producto'
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
