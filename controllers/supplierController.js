@@ -1,11 +1,11 @@
 const Supplier = require('../models/Supplier');
 
-// [CREATE] Crear nuevo proveedor
+// CREATE (idéntico a createCategory)
 exports.createSupplier = async (req, res) => {
   try {
     const { name, contact, email, phone, address, products } = req.body;
 
-    // Validación como en tu controlador de categorías
+    // Validación como en categorías
     if (!name || !contact || !email || !phone || !address) {
       return res.status(400).json({
         success: false,
@@ -19,23 +19,24 @@ exports.createSupplier = async (req, res) => {
       email,
       phone,
       address,
-      products: products || [],
+      products,
       createdBy: req.userId
     });
 
     await newSupplier.save();
 
-    res.status(201).json({
-      success: true,
+    res.status(201).json({ 
+      success: true, 
       data: newSupplier,
       message: 'Proveedor creado exitosamente'
     });
 
   } catch (error) {
+    // Manejo de errores como en categorías
     if (error.code === 11000) {
       return res.status(400).json({
         success: false,
-        message: 'El correo o nombre ya están registrados'
+        message: 'El proveedor ya existe'
       });
     }
     res.status(500).json({
@@ -45,13 +46,13 @@ exports.createSupplier = async (req, res) => {
   }
 };
 
-// [READ] Obtener todos los proveedores
+// GET ALL (igual a getCategories)
 exports.getAllSuppliers = async (req, res) => {
   try {
     const suppliers = await Supplier.find().populate('products');
-    res.status(200).json({
-      success: true,
-      data: suppliers
+    res.status(200).json({ 
+      success: true, 
+      data: suppliers 
     });
   } catch (error) {
     res.status(500).json({
@@ -61,21 +62,19 @@ exports.getAllSuppliers = async (req, res) => {
   }
 };
 
-// [READ] Obtener un proveedor por ID
+// GET BY ID (igual a getCategoryById)
 exports.getSupplierById = async (req, res) => {
   try {
     const supplier = await Supplier.findById(req.params.id).populate('products');
-    
     if (!supplier) {
       return res.status(404).json({
         success: false,
         message: 'Proveedor no encontrado'
       });
     }
-
-    res.status(200).json({
-      success: true,
-      data: supplier
+    res.status(200).json({ 
+      success: true, 
+      data: supplier 
     });
   } catch (error) {
     res.status(500).json({
@@ -85,7 +84,7 @@ exports.getSupplierById = async (req, res) => {
   }
 };
 
-// [UPDATE] Actualizar proveedor
+// UPDATE (igual a updateCategory)
 exports.updateSupplier = async (req, res) => {
   try {
     const updatedSupplier = await Supplier.findByIdAndUpdate(
@@ -93,16 +92,14 @@ exports.updateSupplier = async (req, res) => {
       req.body,
       { new: true, runValidators: true }
     );
-
     if (!updatedSupplier) {
       return res.status(404).json({
         success: false,
         message: 'Proveedor no encontrado'
       });
     }
-
-    res.status(200).json({
-      success: true,
+    res.status(200).json({ 
+      success: true, 
       data: updatedSupplier,
       message: 'Proveedor actualizado exitosamente'
     });
@@ -110,7 +107,7 @@ exports.updateSupplier = async (req, res) => {
     if (error.code === 11000) {
       return res.status(400).json({
         success: false,
-        message: 'El correo o nombre ya están registrados'
+        message: 'El proveedor ya existe'
       });
     }
     res.status(500).json({
@@ -120,19 +117,17 @@ exports.updateSupplier = async (req, res) => {
   }
 };
 
-// [DELETE] Eliminar proveedor
+// DELETE (igual a deleteCategory)
 exports.deleteSupplier = async (req, res) => {
   try {
     const deletedSupplier = await Supplier.findByIdAndDelete(req.params.id);
-
     if (!deletedSupplier) {
       return res.status(404).json({
         success: false,
         message: 'Proveedor no encontrado'
       });
     }
-
-    res.status(200).json({
+    res.status(200).json({ 
       success: true,
       message: 'Proveedor eliminado exitosamente'
     });
@@ -140,29 +135,6 @@ exports.deleteSupplier = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error al eliminar proveedor: ' + error.message
-    });
-  }
-};
-
-// [SEARCH] Buscar proveedores (similar a categorías)
-exports.searchSuppliers = async (req, res) => {
-  try {
-    const { query } = req.params;
-    const suppliers = await Supplier.find({
-      $or: [
-        { name: { $regex: query, $options: 'i' } },
-        { email: { $regex: query, $options: 'i' } }
-      ]
-    });
-
-    res.status(200).json({
-      success: true,
-      data: suppliers
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error en búsqueda: ' + error.message
     });
   }
 };
