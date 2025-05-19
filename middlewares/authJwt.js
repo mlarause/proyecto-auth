@@ -18,7 +18,7 @@ exports.verifyToken = (req, res, next) => {
 };
 
 exports.isAdmin = (req, res, next) => {
-  if (req.userRole !== 'admin') {
+  if (req.userRol !== 'admin') {
     return res.status(403).json({ message: 'Require Admin Role' });
   }
   next();
