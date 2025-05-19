@@ -1,20 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { verifyToken } = require('../middlewares/auth');
-const { checkRole } = require('../middlewares/role');
-const {
-  createCategory,
-  getAllCategories,
-  updateCategory,
-  deleteCategory
-} = require('../controllers/categorycontroller');
+const { verifyToken, isAdmin } = require('../middlewares/authJwt');
+const categoryController = require('../controllers/categoryController');
 
-// Admin y Coordinador pueden crear/modificar/eliminar
-router.post('/', verifyToken, checkRole(['admin', 'coordinador']), createCategory);
-router.put('/:id', verifyToken, checkRole(['admin', 'coordinador']), updateCategory);
-router.delete('/:id', verifyToken, checkRole(['admin']), deleteCategory);
-
-// Todos los roles pueden leer
-router.get('/', verifyToken, getAllCategories);
+// Rutas para categorías
+router.post('/', [verifyToken, isAdmin], categoryController.create);
+router.get('/', verifyToken, categoryController.getAll);
+router.get('/:id', verifyToken, categoryController.getById);
+router.put('/:id', [verifyToken, isAdmin], categoryController.update);
+router.delete('/:id', [verifyToken, isAdmin], categoryController.delete);
 
 module.exports = router;
