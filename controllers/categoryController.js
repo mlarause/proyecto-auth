@@ -19,8 +19,14 @@ exports.createCategory = async (req, res) => {
       });
     }
 
-    // Verificar si ya existe
-    const existingCategory = await Category.findOne({ name: name.trim() });
+    const trimmedName = name.trim();
+    const trimmedDesc = description.trim();
+
+    // Verificar si ya existe (consulta case-insensitive)
+    const existingCategory = await Category.findOne({ 
+      name: { $regex: new RegExp(`^${trimmedName}$`, 'i') }
+    });
+
     if (existingCategory) {
       return res.status(400).json({
         success: false,
@@ -29,8 +35,8 @@ exports.createCategory = async (req, res) => {
     }
 
     const newCategory = new Category({
-      name: name.trim(),
-      description: description.trim()
+      name: trimmedName,
+      description: trimmedDesc
     });
 
     await newCategory.save();
@@ -43,7 +49,7 @@ exports.createCategory = async (req, res) => {
   } catch (error) {
     console.error('Error al crear categoría:', error);
     
-    if (error.message.includes('duplicate key')) {
+    if (error.message.includes('duplicate key') || error.message.includes('Ya existe')) {
       return res.status(400).json({
         success: false,
         message: 'Ya existe una categoría con ese nombre'
