@@ -5,34 +5,23 @@ exports.create = async (req, res) => {
     try {
         const { name, description } = req.body;
 
-        // Validación de campos requeridos
         if (!name) {
             return res.status(400).json({
                 success: false,
-                message: 'El nombre de la categoría es obligatorio'
+                message: 'Nombre de categoría es requerido'
             });
         }
 
-        // Verificar si la categoría ya existe
-        const existingCategory = await Category.findOne({ name });
-        if (existingCategory) {
-            return res.status(400).json({
-                success: false,
-                message: 'La categoría ya existe'
-            });
-        }
-
-        // Crear nueva categoría
-        const category = await Category.create({
+        const newCategory = await Category.create({
             name,
-            description: description || '',
-            createdBy: req.userId // ID del usuario que crea la categoría
+            description,
+            createdBy: req.userId
         });
 
         res.status(201).json({
             success: true,
             message: 'Categoría creada exitosamente',
-            data: category
+            data: newCategory
         });
 
     } catch (error) {
