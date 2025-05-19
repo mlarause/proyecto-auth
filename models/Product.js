@@ -1,51 +1,52 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
-const ProductSchema = new mongoose.Schema({
+const productSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: true,
+    required: [true, 'El nombre es obligatorio'],
     trim: true,
+    unique: true
   },
   description: {
     type: String,
-    default: "",
+    required: [true, 'La descripción es obligatoria'],
+    trim: true
   },
   price: {
     type: Number,
-    required: true,
-    min: 0,
+    required: [true, 'El precio es obligatorio'],
+    min: [0, 'El precio no puede ser negativo']
   },
   stock: {
     type: Number,
-    required: true,
-    min: 0,
-    default: 0,
+    required: [true, 'El stock es obligatorio'],
+    min: [0, 'El stock no puede ser negativo']
   },
   category: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Category",
-    required: true,
+    ref: 'Category',
+    required: [true, 'La categoría es requerida']
   },
   subcategory: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "SubCategory",
-    required: true,
+    ref: 'Subcategory',
+    required: [true, 'La subcategoría es requerida']
   },
-  supplier: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Supplier",
-    required: true,
-  },
-  createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-  },
-}, { 
+  images: [{
+    type: String
+  }]
+}, {
   timestamps: true,
+  versionKey: false
 });
 
-// Validación para evitar productos duplicados bajo una misma subcategoría
-ProductSchema.index({ name: 1, subcategory: 1 }, { unique: true });
+// Manejo de errores de duplicados
+productSchema.post('save', function(error, doc, next) {
+  if (error.name === 'MongoServerError' && error.code === 11000) {
+    next(new Error('Ya existe un producto con ese nombre'));
+  } else {
+    next(error);
+  }
+});
 
-module.exports = mongoose.model("Product", ProductSchema);
+module.exports = mongoose.model('Product', productSchema);
