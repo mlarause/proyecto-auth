@@ -8,15 +8,15 @@ const verifyToken = (req, res, next) => {
   const token = req.headers["x-access-token"] || req.cookies.token;
 
   if (!token) {
-    return res.status(403).json({ message: "No se proporcionó token" });
+    return res.status(403).json({ message: "Token no proporcionado" });
   }
 
-  jwt.verify(token, config.secret, (err, decoded) => {
+  jwt.verify(token, TOKEN_SECRET, (err, decoded) => {
     if (err) {
-      return res.status(401).json({ message: "No autorizado" });
+      return res.status(401).json({ message: "Token inválido" });
     }
     req.userId = decoded.id;
-    req.userRole = decoded.role; // Asegúrate de que el token incluya el rol
+    req.userRole = decoded.role;
     next();
   });
 };
