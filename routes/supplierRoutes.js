@@ -3,16 +3,16 @@ const router = express.Router();
 const supplierController = require('../controllers/supplierController');
 const auth = require('../middlewares/auth');
 
-// CREATE - Solo admin y coordinador
+// CREATE (Admin y Coordinador)
 router.post('/',
-  auth.verifyToken,
-  auth.checkRole(['admin', 'coordinador']),
+  verifyToken,
+  isCoordinador,
   supplierController.createSupplier
 );
 
-// READ ALL - Todos autenticados
+// READ ALL (Todos autenticados)
 router.get('/',
-  auth.verifyToken,
+  verifyToken,
   supplierController.getAllSuppliers
 );
 
