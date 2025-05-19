@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const categoryController = require('../controllers/categoryController');
 
-// Mantengo las rutas existentes sin cambios
 router.post('/', categoryController.createCategory);
 router.get('/', categoryController.getCategories);
 router.get('/:id', categoryController.getCategoryById);
