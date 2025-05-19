@@ -2,35 +2,37 @@ const jwt = require('jsonwebtoken');
 const { TOKEN_SECRET } = require('../config/auth.config');
 const User = require('../models/User');
 
-// 1. Verificación de Token (mejorada)
+// 1. Función original verifyToken (mejorada para manejar más casos)
 const verifyToken = (req, res, next) => {
-  // Buscar token en: 1) Headers, 2) Cookies, 3) Query params
+  // Buscar token en: headers, cookies o body
   const token = req.headers['x-access-token'] || 
-               req.headers['authorization']?.split(' ')[1] || 
-               req.cookies?.token;
+               req.cookies?.token || 
+               req.body?.token;
 
   if (!token) {
-    return res.status(403).json({
+    return res.status(403).json({ 
       success: false,
-      message: 'Token de autenticación no proporcionado'
+      message: 'Token no proporcionado' 
     });
   }
 
   jwt.verify(token, TOKEN_SECRET, (err, decoded) => {
     if (err) {
-      return res.status(401).json({
+      console.error('Error al verificar token:', err);
+      return res.status(401).json({ 
         success: false,
-        message: 'Token inválido o expirado'
+        message: 'Token inválido o expirado' 
       });
     }
-    
+
+    // Asignar datos del usuario a la petición
     req.userId = decoded.id;
     req.userRole = decoded.role;
     next();
   });
 };
 
-// 2. Función isAdmin (original)
+// 2. Función original isAdmin
 const isAdmin = async (req, res, next) => {
   try {
     const user = await User.findById(req.userId);
@@ -50,14 +52,15 @@ const isAdmin = async (req, res, next) => {
       });
     }
   } catch (error) {
+    console.error('Error en isAdmin:', error);
     return res.status(500).json({
       success: false,
-      message: error.message
+      message: 'Error al verificar rol'
     });
   }
 };
 
-// 3. Función isCoordinador (original)
+// 3. Función original isCoordinador
 const isCoordinador = async (req, res, next) => {
   try {
     const user = await User.findById(req.userId);
@@ -77,14 +80,15 @@ const isCoordinador = async (req, res, next) => {
       });
     }
   } catch (error) {
+    console.error('Error en isCoordinador:', error);
     return res.status(500).json({
       success: false,
-      message: error.message
+      message: 'Error al verificar rol'
     });
   }
 };
 
-// 4. Función isAuxiliar (original)
+// 4. Función original isAuxiliar
 const isAuxiliar = async (req, res, next) => {
   try {
     const user = await User.findById(req.userId);
@@ -104,48 +108,32 @@ const isAuxiliar = async (req, res, next) => {
       });
     }
   } catch (error) {
+    console.error('Error en isAuxiliar:', error);
     return res.status(500).json({
       success: false,
-      message: error.message
+      message: 'Error al verificar rol'
     });
   }
 };
 
-// 5. Función checkRole (nueva - compatible con las existentes)
+// 5. Función original checkRole (si la tenías)
 const checkRole = (allowedRoles = []) => {
-  return async (req, res, next) => {
-    try {
-      const user = await User.findById(req.userId);
-      
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: 'Usuario no encontrado'
-        });
-      }
-
-      if (allowedRoles.includes(user.role)) {
-        next();
-      } else {
-        return res.status(403).json({
-          success: false,
-          message: `Acceso denegado. Rol requerido: ${allowedRoles.join(', ')}`
-        });
-      }
-    } catch (error) {
-      return res.status(500).json({
+  return (req, res, next) => {
+    if (!allowedRoles.includes(req.userRole)) {
+      return res.status(403).json({
         success: false,
-        message: error.message
+        message: `Acceso denegado. Rol requerido: ${allowedRoles.join(', ')}`
       });
     }
+    next();
   };
 };
 
-// Exporta TODAS las funciones
+// Exporta TODAS las funciones como las tenías originalmente
 module.exports = {
   verifyToken,
   isAdmin,
   isCoordinador,
   isAuxiliar,
-  checkRole
+  checkRole // Solo si la usabas anteriormente
 };
