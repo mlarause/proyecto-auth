@@ -5,60 +5,39 @@ const userSchema = new mongoose.Schema({
   name: {
     type: String,
     required: [true, 'El nombre es obligatorio'],
-    trim: true,
-    minlength: [3, 'El nombre debe tener al menos 3 caracteres']
+    trim: true
   },
   email: {
     type: String,
     required: [true, 'El email es obligatorio'],
     unique: true,
     trim: true,
-    lowercase: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Email inválido']
+    lowercase: true
   },
   password: {
     type: String,
     required: [true, 'La contraseña es obligatoria'],
-    minlength: [8, 'La contraseña debe tener al menos 8 caracteres'],
-    select: false
+    minlength: 6
   },
   role: {
     type: String,
-    enum: {
-      values: ['user', 'supplier_manager', 'admin'],
-      message: 'Rol {VALUE} no válido'
-    },
-    default: 'user'
+    enum: ['admin', 'coordinador', 'auxiliar'],
+    default: 'auxiliar'
   },
   createdAt: {
     type: Date,
     default: Date.now
-  },
-  updatedAt: {
-    type: Date
   }
 }, {
-  versionKey: false,
-  toJSON: { virtuals: true },
-  toObject: { virtuals: true }
+  versionKey: false
 });
 
-// Middleware para hash de contraseña
+// Hash de contraseña antes de guardar
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
   
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Middleware para actualizar fecha de modificación
-userSchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
   next();
 });
 
@@ -66,9 +45,5 @@ userSchema.pre('save', function(next) {
 userSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
-
-// Índices para mejor rendimiento
-userSchema.index({ email: 1 });
-userSchema.index({ role: 1 });
 
 module.exports = mongoose.model('User', userSchema);
