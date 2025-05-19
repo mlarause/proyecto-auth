@@ -8,7 +8,7 @@ exports.authenticate = async (req, res, next) => {
     if (!token) {
       return res.status(401).json({ 
         success: false,
-        message: 'Acceso no autorizado. Token requerido.' 
+        message: 'Autenticación requerida' 
       });
     }
 
@@ -23,7 +23,6 @@ exports.authenticate = async (req, res, next) => {
     }
 
     req.user = user;
-    req.token = token;
     next();
   } catch (error) {
     console.error('Error en autenticación:', error);
@@ -34,12 +33,16 @@ exports.authenticate = async (req, res, next) => {
   }
 };
 
-exports.authorize = (...roles) => {
+exports.authorize = (roles = []) => {
+  if (typeof roles === 'string') {
+    roles = [roles];
+  }
+
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         success: false,
-        message: 'No tienes permiso para realizar esta acción' 
+        message: 'No tienes permiso para realizar esta acción'
       });
     }
     next();

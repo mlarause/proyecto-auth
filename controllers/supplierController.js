@@ -21,11 +21,11 @@ exports.createSupplier = async (req, res) => {
     const { name, contact, email, phone, address, products } = req.body;
 
     // Validar que existan los productos
-    const productsExist = await Product.find({ 
-      '_id': { $in: products } 
-    }).countDocuments();
+    const existingProducts = await Product.countDocuments({
+      _id: { $in: products }
+    });
 
-    if (productsExist !== products.length) {
+    if (existingProducts !== products.length) {
       return res.status(400).json({
         success: false,
         message: 'Uno o más productos no existen'
@@ -46,7 +46,7 @@ exports.createSupplier = async (req, res) => {
     // Guardar en la base de datos
     const savedSupplier = await supplier.save();
 
-    // Obtener el proveedor con los datos poblados
+    // Obtener el proveedor con datos poblados
     const supplierWithDetails = await Supplier.findById(savedSupplier._id)
       .populate('products', 'name price')
       .populate('createdBy', 'name email');
