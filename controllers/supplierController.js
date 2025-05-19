@@ -3,22 +3,38 @@ const Supplier = require("../models/Supplier");
 // Crear proveedor
 exports.createSupplier = async (req, res) => {
   try {
-    const { name, contact, email, phone, address, products } = req.body;
-    
+    // Validar datos requeridos
+    const { name, contact, email, phone, address } = req.body;
+    if (!name || !contact || !email || !phone || !address) {
+      return res.status(400).json({
+        success: false,
+        message: "Faltan campos obligatorios"
+      });
+    }
+
+    // Verificar si el email ya existe
+    const existingSupplier = await Supplier.findOne({ email });
+    if (existingSupplier) {
+      return res.status(400).json({
+        success: false,
+        message: "El correo ya está registrado"
+      });
+    }
+
     const newSupplier = new Supplier({
-      name,
-      contact,
-      email,
-      phone,
-      address,
-      products,
-      createdBy: req.userId // Opcional: guardar quién lo creó
+      ...req.body,
+      createdBy: req.userId // Asignar el usuario que lo creó
     });
 
     await newSupplier.save();
     res.status(201).json({ success: true, data: newSupplier });
+
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    console.error("Error al crear proveedor:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Algo salió mal al crear el proveedor"
+    });
   }
 };
 
