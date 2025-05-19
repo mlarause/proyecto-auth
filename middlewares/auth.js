@@ -6,7 +6,7 @@ const User = db.user;
 // Función existente verifyToken (no la modifiques si ya funciona)
 const verifyToken = (req, res, next) => {
   const token = req.headers["x-access-token"] || req.cookies.token;
-
+  
   if (!token) {
     return res.status(403).json({ message: "Token no proporcionado" });
   }
