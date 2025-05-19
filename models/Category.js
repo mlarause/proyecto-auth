@@ -5,7 +5,8 @@ const categorySchema = new mongoose.Schema({
     type: String,
     required: [true, 'El nombre es obligatorio'],
     unique: true,
-    trim: true
+    trim: true,
+    index: true
   },
   description: {
     type: String,
@@ -17,13 +18,19 @@ const categorySchema = new mongoose.Schema({
   versionKey: false
 });
 
-// Manejo de errores de duplicados
+// Manejo mejorado de errores de duplicados
 categorySchema.post('save', function(error, doc, next) {
   if (error.name === 'MongoServerError' && error.code === 11000) {
     next(new Error('Ya existe una categoría con ese nombre'));
   } else {
     next(error);
   }
+});
+
+// Eliminar índice duplicado si existe
+categorySchema.index({ name: 1 }, { 
+  unique: true,
+  partialFilterExpression: { name: { $exists: true, $type: 'string' } }
 });
 
 module.exports = mongoose.model('Category', categorySchema);
