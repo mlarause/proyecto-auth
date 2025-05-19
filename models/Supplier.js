@@ -1,35 +1,16 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
-const SupplierSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    trim: true,
-    unique: true,
-  },
-  contact: {
-    email: {
-      type: String,
-      required: true,
-      trim: true,
-      lowercase: true,
-    },
-    phone: {
-      type: String,
-      trim: true,
-    },
-  },
-  address: {
-    type: String,
-    default: "",
-  },
-  createdBy: {
+const supplierSchema = new mongoose.Schema({
+  name: { type: String, required: true, unique: true },
+  contact: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  phone: String,
+  address: String,
+  products: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-  },
-}, { 
-  timestamps: true,
-});
+    ref: 'Product',
+    required: true
+  }]
+}, { timestamps: true });
 
-module.exports = mongoose.model("Supplier", SupplierSchema);
+module.exports = mongoose.model('Supplier', supplierSchema);
