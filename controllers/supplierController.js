@@ -4,22 +4,30 @@ const Product = require('../models/Product');
 /**
  * @desc    Crear un nuevo proveedor
  * @route   POST /api/suppliers
- * @access  Privado (Admin/Manager)
+ * @access  Privado (Admin/Coordinador)
  */
 exports.createSupplier = async (req, res) => {
   try {
     const { name, contact, email, phone, address, products } = req.body;
 
-    // Validar productos
-    const productsExist = await Product.countDocuments({ _id: { $in: products } });
-    if (productsExist !== products.length) {
+    // Validar que vienen productos
+    if (!products || products.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'Uno o más productos no existen'
+        message: 'Debe asociar al menos un producto'
       });
     }
 
-    // Crear proveedor
+    // Verificar que los productos existan
+    const existingProducts = await Product.find({ _id: { $in: products } });
+    if (existingProducts.length !== products.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'Algunos productos no existen'
+      });
+    }
+
+    // Crear el proveedor
     const supplier = new Supplier({
       name,
       contact,
@@ -30,11 +38,10 @@ exports.createSupplier = async (req, res) => {
       createdBy: req.user._id
     });
 
-    // Guardar en DB
-    const savedSupplier = await supplier.save();
+    await supplier.save();
 
-    // Obtener datos poblados
-    const result = await Supplier.findById(savedSupplier._id)
+    // Obtener datos poblados para la respuesta
+    const result = await Supplier.findById(supplier._id)
       .populate('products', 'name price')
       .populate('createdBy', 'name email');
 
@@ -63,7 +70,7 @@ exports.createSupplier = async (req, res) => {
 /**
  * @desc    Obtener todos los proveedores
  * @route   GET /api/suppliers
- * @access  Privado (Admin/Manager/User)
+ * @access  Privado (Admin/Coordinador/Auxiliar)
  */
 exports.getSuppliers = async (req, res) => {
   try {
@@ -89,7 +96,7 @@ exports.getSuppliers = async (req, res) => {
 /**
  * @desc    Obtener proveedor por ID
  * @route   GET /api/suppliers/:id
- * @access  Privado (Admin/Manager/User)
+ * @access  Privado (Admin/Coordinador/Auxiliar)
  */
 exports.getSupplierById = async (req, res) => {
   try {
@@ -129,7 +136,7 @@ exports.getSupplierById = async (req, res) => {
 /**
  * @desc    Actualizar proveedor
  * @route   PUT /api/suppliers/:id
- * @access  Privado (Admin/Manager)
+ * @access  Privado (Admin/Coordinador)
  */
 exports.updateSupplier = async (req, res) => {
   try {
@@ -218,7 +225,7 @@ exports.deleteSupplier = async (req, res) => {
 /**
  * @desc    Obtener proveedores por producto
  * @route   GET /api/suppliers/product/:productId
- * @access  Privado (Admin/Manager/User)
+ * @access  Privado (Admin/Coordinador/Auxiliar)
  */
 exports.getSuppliersByProduct = async (req, res) => {
   try {
