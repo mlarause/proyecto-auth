@@ -5,37 +5,60 @@ const userSchema = new mongoose.Schema({
   name: {
     type: String,
     required: [true, 'El nombre es obligatorio'],
-    trim: true
+    trim: true,
+    minlength: [3, 'El nombre debe tener al menos 3 caracteres']
   },
   email: {
     type: String,
     required: [true, 'El email es obligatorio'],
     unique: true,
     trim: true,
-    lowercase: true
+    lowercase: true,
+    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Email inválido']
   },
   password: {
     type: String,
     required: [true, 'La contraseña es obligatoria'],
-    minlength: [6, 'La contraseña debe tener al menos 6 caracteres']
+    minlength: [8, 'La contraseña debe tener al menos 8 caracteres'],
+    select: false
   },
   role: {
     type: String,
-    enum: ['user', 'manager', 'admin'],
+    enum: {
+      values: ['user', 'supplier_manager', 'admin'],
+      message: 'Rol {VALUE} no válido'
+    },
     default: 'user'
   },
   createdAt: {
     type: Date,
     default: Date.now
+  },
+  updatedAt: {
+    type: Date
   }
 }, {
-  versionKey: false
+  versionKey: false,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
-// Hash de contraseña antes de guardar
+// Middleware para hash de contraseña
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 10);
+  
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Middleware para actualizar fecha de modificación
+userSchema.pre('save', function(next) {
+  this.updatedAt = Date.now();
   next();
 });
 
@@ -43,5 +66,9 @@ userSchema.pre('save', async function(next) {
 userSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
+
+// Índices para mejor rendimiento
+userSchema.index({ email: 1 });
+userSchema.index({ role: 1 });
 
 module.exports = mongoose.model('User', userSchema);
