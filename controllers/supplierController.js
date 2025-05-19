@@ -10,15 +10,16 @@ exports.createSupplier = async (req, res) => {
   try {
     const { name, contact, email, phone, address, products } = req.body;
 
-    // Validar productos
-    const validProducts = await Product.countDocuments({ _id: { $in: products } });
-    if (validProducts !== products.length) {
+    // Validación manual de productos
+    const validProducts = await Product.find({ _id: { $in: products } });
+    if (validProducts.length !== products.length) {
       return res.status(400).json({
         success: false,
-        message: 'Uno o más productos no existen'
+        message: 'Algunos productos no existen'
       });
     }
 
+    // Crear proveedor
     const supplier = new Supplier({
       name,
       contact,
@@ -31,20 +32,25 @@ exports.createSupplier = async (req, res) => {
 
     await supplier.save();
 
+    // Respuesta exitosa
     res.status(201).json({
       success: true,
-      data: await Supplier.findById(supplier._id)
-        .populate('products', 'name')
-        .populate('createdBy', 'name')
+      data: {
+        ...supplier.toObject(),
+        products: validProducts.map(p => ({ _id: p._id, name: p.name }))
+      }
     });
 
   } catch (error) {
+    console.error('Error en createSupplier:', error);
+    
     if (error.code === 11000) {
       return res.status(400).json({
         success: false,
-        message: 'El proveedor ya existe'
+        message: 'El proveedor ya existe (nombre o email duplicado)'
       });
     }
+
     res.status(500).json({
       success: false,
       message: 'Error al crear proveedor'
