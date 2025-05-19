@@ -1,30 +1,40 @@
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
+const cors = require('cors');
 const config = require('./config');
 
-const app = express();
-
-// Conexión segura a MongoDB
-mongoose.connect(config.MONGODB_URI)
-    .then(() => console.log('✅ Conexión exitosa a MongoDB'))
-    .catch(err => {
-        console.error('❌ Error de conexión a MongoDB:', err.message);
-        process.exit(1);
-    });
-
-// Middlewares
-app.use(express.json());
-
-// Importar rutas
+// Importar rutas primero
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
+const categoryRoutes = require('./routes/categoryRoutes');
 
-// Usar rutas
+// Configuración de Express
+const app = express();
+
+// Middlewares
+app.use(cors());
+app.use(express.json());
+
+// Conexión a MongoDB
+mongoose.connect(config.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+})
+.then(() => console.log('✅ Conectado a MongoDB'))
+.catch(err => console.error('❌ Error de conexión a MongoDB:', err));
+
+// Rutas
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/categories', categoryRoutes);
 
-// Manejo de errores global
+// Ruta de prueba
+app.get('/', (req, res) => {
+    res.send('🚀 API funcionando correctamente');
+});
+
+// Manejo de errores
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).json({
@@ -33,10 +43,8 @@ app.use((err, req, res, next) => {
     });
 });
 
+// Iniciar servidor
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+    console.log(`🔥 Servidor corriendo en http://localhost:${PORT}`);
 });
-app.use('/api/categories', categoryRoutes);
-
-const categoryRoutes = require('./routes/categoryRoutes');
