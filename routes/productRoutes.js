@@ -1,16 +1,21 @@
 const express = require('express');
 const router = express.Router();
-const { verifyToken } = require('../middlewares/auth');
-const { checkRole } = require('../middlewares/role');
-const {
-  createProduct,
-  getProductsBySubCategory
-} = require('../controllers/productcontroller');
+const productController = require('../controllers/productController');
+const { check } = require('express-validator');
 
-// Admin y Coordinador pueden crear
-router.post('/', verifyToken, checkRole(['admin', 'coordinador']), createProduct);
+const validateProduct = [
+  check('name').not().isEmpty().withMessage('El nombre es obligatorio'),
+  check('description').not().isEmpty().withMessage('La descripción es obligatoria'),
+  check('price').isFloat({ min: 0 }).withMessage('Precio inválido'),
+  check('stock').isInt({ min: 0 }).withMessage('Stock inválido'),
+  check('category').not().isEmpty().withMessage('La categoría es requerida'),
+  check('subcategory').not().isEmpty().withMessage('La subcategoría es requerida')
+];
 
-// Todos los roles pueden leer
-router.get('/by-subcategory/:subcategoryId', verifyToken, getProductsBySubCategory);
+router.post('/', validateProduct, productController.createProduct);
+router.get('/', productController.getProducts);
+router.get('/:id', productController.getProductById);
+router.put('/:id', validateProduct, productController.updateProduct);
+router.delete('/:id', productController.deleteProduct);
 
 module.exports = router;
