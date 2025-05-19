@@ -2,17 +2,34 @@ const Category = require('../models/Category');
 
 exports.createCategory = async (req, res) => {
   try {
-    const { nombre, description } = req.body; // Cambié 'name' a 'nombre'
+    const { name, description } = req.body;
 
-    if (!nombre || !description) {
+    // Validación mejorada
+    if (!name || typeof name !== 'string' || !name.trim()) {
       return res.status(400).json({
         success: false,
-        message: 'Nombre y descripción son obligatorios'
+        message: 'El nombre es obligatorio y debe ser texto válido'
+      });
+    }
+
+    if (!description || typeof description !== 'string' || !description.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'La descripción es obligatoria y debe ser texto válido'
+      });
+    }
+
+    // Verificar si ya existe
+    const existingCategory = await Category.findOne({ name: name.trim() });
+    if (existingCategory) {
+      return res.status(400).json({
+        success: false,
+        message: 'Ya existe una categoría con ese nombre'
       });
     }
 
     const newCategory = new Category({
-      nombre: nombre.trim(),
+      name: name.trim(),
       description: description.trim()
     });
 
@@ -40,7 +57,7 @@ exports.createCategory = async (req, res) => {
   }
 };
 
-// Mantengo todas tus funciones existentes sin cambios
+// Resto de funciones se mantienen igual
 exports.getCategories = async (req, res) => {
   try {
     const categories = await Category.find();
