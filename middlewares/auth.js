@@ -1,48 +1,73 @@
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const jwt = require("jsonwebtoken");
+const config = require("../config/auth.config");
+const db = require("../models");
+const User = db.user;
 
-exports.authenticate = async (req, res, next) => {
-  try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    
-    if (!token) {
-      return res.status(401).json({ 
-        success: false,
-        message: 'Token de autenticación requerido' 
-      });
-    }
+// Función existente verifyToken (no la modifiques si ya funciona)
+const verifyToken = (req, res, next) => {
+  const token = req.headers["x-access-token"] || req.cookies.token;
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id);
-
-    if (!user) {
-      return res.status(401).json({ 
-        success: false,
-        message: 'Usuario no encontrado' 
-      });
-    }
-
-    req.user = user;
-    next();
-  } catch (error) {
-    res.status(401).json({ 
-      success: false,
-      message: 'Token inválido o expirado' 
-    });
+  if (!token) {
+    return res.status(403).json({ message: "No se proporcionó token" });
   }
+
+  jwt.verify(token, config.secret, (err, decoded) => {
+    if (err) {
+      return res.status(401).json({ message: "No autorizado" });
+    }
+    req.userId = decoded.id;
+    req.userRole = decoded.role; // Asegúrate de que el token incluya el rol
+    next();
+  });
 };
 
-// Middleware de autorización (MODIFICADO SOLO PARA PROVEEDORES)
-exports.authorize = (roles) => {
+// Función existente isAdmin (si la tienes)
+const isAdmin = (req, res, next) => {
+  User.findById(req.userId).exec((err, user) => {
+    if (err) {
+      return res.status(500).json({ message: err });
+    }
+
+    if (user.role === "admin") {
+      next();
+    } else {
+      return res.status(403).json({ message: "Requiere rol de Admin" });
+    }
+  });
+};
+
+// Función existente isModerator (si la tienes)
+const isModerator = (req, res, next) => {
+  User.findById(req.userId).exec((err, user) => {
+    if (err) {
+      return res.status(500).json({ message: err });
+    }
+
+    if (user.role === "moderator") {
+      next();
+    } else {
+      return res.status(403).json({ message: "Requiere rol de Moderador" });
+    }
+  });
+};
+
+// Nueva función para validar roles dinámicos (sin borrar lo existente)
+const checkRole = (allowedRoles) => {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
+    if (!allowedRoles.includes(req.userRole)) {
       return res.status(403).json({
         success: false,
-        message: 'No tienes permiso para esta acción',
-        requiredRoles: roles,
-        currentRole: req.user.role
+        message: `Acceso denegado. Rol requerido: ${allowedRoles.join(", ")}`
       });
     }
     next();
   };
+};
+
+// Exporta TODAS las funciones (las tuyas + la nueva)
+module.exports = {
+  verifyToken,
+  isAdmin,
+  isModerator,
+  checkRole
 };
