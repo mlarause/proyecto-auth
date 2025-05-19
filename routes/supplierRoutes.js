@@ -1,29 +1,37 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const supplierController = require('../controllers/supplierController');
-const { authenticate, authorize } = require('../middlewares/auth');
+const supplierController = require("../controllers/supplierController");
+const { verifyToken } = require("../middlewares/auth");
+const checkRole = require("../middlewares/role");
 
-// Aplicar autenticación a todas las rutas
-router.use(authenticate);
+// Permisos:
+// - Admin: CRUD completo
+// - Coordinador: Crear, Leer, Actualizar
+// - Auxiliar: Solo Leer
 
-// Endpoints específicos (SOLO para proveedores)
-router.post('/', 
-  (req, res, next) => {
-    if (['admin', 'coordinador'].includes(req.user.role)) {
-      return next();
-    }
-    return res.status(403).json({
-      success: false,
-      message: 'Acceso denegado: Se requiere rol admin o coordinador'
-    });
-  }, 
+router.post(
+  "/",
+  verifyToken,
+  checkRole(["admin", "coordinador"]),
   supplierController.createSupplier
 );
 
-// Mantener todas las demás rutas EXACTAMENTE como están en tu repositorio
-router.get('/', supplierController.getSuppliers);
-router.get('/:id', supplierController.getSupplierById);
-router.put('/:id', supplierController.updateSupplier);
-router.delete('/:id', supplierController.deleteSupplier);
+router.get("/", verifyToken, supplierController.getAllSuppliers);
+
+router.get("/:id", verifyToken, supplierController.getSupplierById);
+
+router.put(
+  "/:id",
+  verifyToken,
+  checkRole(["admin", "coordinador"]),
+  supplierController.updateSupplier
+);
+
+router.delete(
+  "/:id",
+  verifyToken,
+  checkRole(["admin"]),
+  supplierController.deleteSupplier
+);
 
 module.exports = router;
