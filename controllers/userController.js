@@ -1,9 +1,9 @@
 const User = require('../models/User');
 const mongoose = require('mongoose');
 
-exports.getAllUsers = async (req, res) => {
+const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select('-password');
+    const users = await User.find({}, '-password');
     res.status(200).json({
       success: true,
       data: users
@@ -17,9 +17,9 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
-exports.getUserById = async (req, res) => {
+const getUserById = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select('-password');
+    const user = await User.findById(req.params.id, '-password');
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -39,15 +39,12 @@ exports.getUserById = async (req, res) => {
   }
 };
 
-exports.updateUser = async (req, res) => {
+const updateUser = async (req, res) => {
   try {
-    // Eliminar el : del ID si existe
-    let id = req.params.id;
-    if (id.startsWith(':')) {
-      id = id.substring(1);
-    }
+    const { id } = req.params;
+    const cleanId = id.startsWith(':') ? id.substring(1) : id;
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
+    if (!mongoose.Types.ObjectId.isValid(cleanId)) {
       return res.status(400).json({
         success: false,
         message: 'ID de usuario no válido'
@@ -55,10 +52,10 @@ exports.updateUser = async (req, res) => {
     }
 
     const updatedUser = await User.findByIdAndUpdate(
-      id,
+      cleanId,
       req.body,
-      { new: true }
-    ).select('-password');
+      { new: true, select: '-password' }
+    );
 
     if (!updatedUser) {
       return res.status(404).json({
@@ -81,7 +78,7 @@ exports.updateUser = async (req, res) => {
   }
 };
 
-exports.deleteUser = async (req, res) => {
+const deleteUser = async (req, res) => {
   try {
     const deletedUser = await User.findByIdAndDelete(req.params.id);
     if (!deletedUser) {
@@ -101,4 +98,11 @@ exports.deleteUser = async (req, res) => {
       error: error.message
     });
   }
+};
+
+module.exports = {
+  getAllUsers,
+  getUserById,
+  updateUser,
+  deleteUser
 };
