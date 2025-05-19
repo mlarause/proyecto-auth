@@ -1,17 +1,5 @@
 const Supplier = require('../models/Supplier');
 const Product = require('../models/Product');
-const { validationResult } = require('express-validator');
-
-// Helper para manejar errores de validación
-const handleValidationErrors = (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      errors: errors.array()
-    });
-  }
-};
 
 /**
  * @desc    Crear un nuevo proveedor
@@ -19,21 +7,19 @@ const handleValidationErrors = (req, res) => {
  * @access  Privado (Admin/Manager)
  */
 exports.createSupplier = async (req, res) => {
-  handleValidationErrors(req, res);
-
   try {
     const { name, contact, email, phone, address, products } = req.body;
 
-    // 1. Validar productos
-    const existingProducts = await Product.find({ _id: { $in: products } }).select('_id');
-    if (existingProducts.length !== products.length) {
+    // Validar productos
+    const productsExist = await Product.countDocuments({ _id: { $in: products } });
+    if (productsExist !== products.length) {
       return res.status(400).json({
         success: false,
         message: 'Uno o más productos no existen'
       });
     }
 
-    // 2. Crear proveedor
+    // Crear proveedor
     const supplier = new Supplier({
       name,
       contact,
@@ -44,10 +30,10 @@ exports.createSupplier = async (req, res) => {
       createdBy: req.user._id
     });
 
-    // 3. Guardar en DB
+    // Guardar en DB
     const savedSupplier = await supplier.save();
 
-    // 4. Obtener datos poblados para la respuesta
+    // Obtener datos poblados
     const result = await Supplier.findById(savedSupplier._id)
       .populate('products', 'name price')
       .populate('createdBy', 'name email');
@@ -81,30 +67,13 @@ exports.createSupplier = async (req, res) => {
  */
 exports.getSuppliers = async (req, res) => {
   try {
-    // 1. Configurar query (filtrado por producto si existe)
-    const query = req.query.product ? { products: req.query.product } : {};
-
-    // 2. Paginación
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
-
-    // 3. Obtener proveedores
-    const suppliers = await Supplier.find(query)
+    const suppliers = await Supplier.find()
       .populate('products', 'name')
-      .skip(skip)
-      .limit(limit)
-      .sort({ createdAt: -1 });
-
-    // 4. Contar total para paginación
-    const total = await Supplier.countDocuments(query);
+      .populate('createdBy', 'name');
 
     res.status(200).json({
       success: true,
       count: suppliers.length,
-      total,
-      pages: Math.ceil(total / limit),
-      currentPage: page,
       data: suppliers
     });
 
@@ -125,7 +94,7 @@ exports.getSuppliers = async (req, res) => {
 exports.getSupplierById = async (req, res) => {
   try {
     const supplier = await Supplier.findById(req.params.id)
-      .populate('products', 'name price description')
+      .populate('products', 'name price')
       .populate('createdBy', 'name email');
 
     if (!supplier) {
@@ -163,12 +132,10 @@ exports.getSupplierById = async (req, res) => {
  * @access  Privado (Admin/Manager)
  */
 exports.updateSupplier = async (req, res) => {
-  handleValidationErrors(req, res);
-
   try {
     const { products, ...updateData } = req.body;
 
-    // 1. Validar productos si se envían
+    // Validar productos si se envían
     if (products) {
       const productsExist = await Product.countDocuments({ _id: { $in: products } });
       if (productsExist !== products.length) {
@@ -180,14 +147,11 @@ exports.updateSupplier = async (req, res) => {
       updateData.products = products;
     }
 
-    // 2. Actualizar proveedor
+    // Actualizar proveedor
     const updatedSupplier = await Supplier.findByIdAndUpdate(
       req.params.id,
       updateData,
-      { 
-        new: true,
-        runValidators: true
-      }
+      { new: true, runValidators: true }
     )
     .populate('products', 'name')
     .populate('createdBy', 'name email');
@@ -228,9 +192,9 @@ exports.updateSupplier = async (req, res) => {
  */
 exports.deleteSupplier = async (req, res) => {
   try {
-    const deletedSupplier = await Supplier.findByIdAndDelete(req.params.id);
+    const supplier = await Supplier.findByIdAndDelete(req.params.id);
 
-    if (!deletedSupplier) {
+    if (!supplier) {
       return res.status(404).json({
         success: false,
         message: 'Proveedor no encontrado'
@@ -239,7 +203,7 @@ exports.deleteSupplier = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: deletedSupplier
+      data: supplier
     });
 
   } catch (error) {
@@ -260,7 +224,7 @@ exports.getSuppliersByProduct = async (req, res) => {
   try {
     const suppliers = await Supplier.find({ products: req.params.productId })
       .populate('products', 'name')
-      .sort({ name: 1 });
+      .populate('createdBy', 'name');
 
     res.status(200).json({
       success: true,
@@ -272,7 +236,7 @@ exports.getSuppliersByProduct = async (req, res) => {
     console.error('Error en getSuppliersByProduct:', error);
     res.status(500).json({
       success: false,
-      message: 'Error al obtener proveedores'
+      message: 'Error al obtener proveedores por producto'
     });
   }
 };
