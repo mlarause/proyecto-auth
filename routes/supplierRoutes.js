@@ -1,38 +1,38 @@
 const express = require('express');
 const router = express.Router();
 const supplierController = require('../controllers/supplierController');
-const auth = require('../middlewares/auth');
+const authMiddleware = require('../middlewares/auth'); // Importación corregida
 
-// CREATE (Admin y Coordinador)
+// CREATE - Admin y Coordinador
 router.post('/',
-  verifyToken,
-  isCoordinador,
+  authMiddleware.verifyToken, // Usar authMiddleware.verifyToken
+  authMiddleware.checkRole(['admin', 'coordinador']),
   supplierController.createSupplier
 );
 
-// READ ALL (Todos autenticados)
+// READ ALL - Todos autenticados
 router.get('/',
-  verifyToken,
+  authMiddleware.verifyToken,
   supplierController.getAllSuppliers
 );
 
 // READ ONE - Todos autenticados
 router.get('/:id',
-  auth.verifyToken,
+  authMiddleware.verifyToken,
   supplierController.getSupplierById
 );
 
-// UPDATE - Solo admin y coordinador
+// UPDATE - Admin y Coordinador
 router.put('/:id',
-  auth.verifyToken,
-  auth.checkRole(['admin', 'coordinador']),
+  authMiddleware.verifyToken,
+  authMiddleware.checkRole(['admin', 'coordinador']),
   supplierController.updateSupplier
 );
 
-// DELETE - Solo admin
+// DELETE - Solo Admin
 router.delete('/:id',
-  auth.verifyToken,
-  auth.isAdmin,
+  authMiddleware.verifyToken,
+  authMiddleware.isAdmin,
   supplierController.deleteSupplier
 );
 
