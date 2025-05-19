@@ -1,13 +1,17 @@
 const jwt = require('jsonwebtoken');
 const { TOKEN_SECRET } = require('../config/auth.config');
 
-// 1. Función verifyToken (mejorada)
+// 1. Función verifyToken (idéntica a la de categorías)
 const verifyToken = (req, res, next) => {
   const token = req.headers['x-access-token'] || 
-               req.headers['authorization']?.split(' ')[1] || 
-               req.cookies?.token;
+               req.cookies?.token || 
+               req.headers['authorization']?.split(' ')[1];
 
   if (!token) {
+    console.error('Token no encontrado en:', {
+      headers: req.headers,
+      cookies: req.cookies
+    });
     return res.status(403).json({ 
       success: false, 
       message: 'Token no proporcionado' 
@@ -16,6 +20,7 @@ const verifyToken = (req, res, next) => {
 
   jwt.verify(token, TOKEN_SECRET, (err, decoded) => {
     if (err) {
+      console.error('Error al verificar token:', err);
       return res.status(401).json({ 
         success: false, 
         message: 'Token inválido o expirado' 
@@ -28,7 +33,7 @@ const verifyToken = (req, res, next) => {
   });
 };
 
-// 2. Función isAdmin (añadida)
+// 2. Funciones de roles (iguales a las de categorías)
 const isAdmin = (req, res, next) => {
   if (req.userRole === 'admin') {
     next();
@@ -40,7 +45,6 @@ const isAdmin = (req, res, next) => {
   }
 };
 
-// 3. Función isCoordinador (añadida)
 const isCoordinador = (req, res, next) => {
   if (['admin', 'coordinador'].includes(req.userRole)) {
     next();
@@ -52,7 +56,6 @@ const isCoordinador = (req, res, next) => {
   }
 };
 
-// 4. Función isAuxiliar (añadida)
 const isAuxiliar = (req, res, next) => {
   if (['auxiliar', 'coordinador', 'admin'].includes(req.userRole)) {
     next();
@@ -64,7 +67,7 @@ const isAuxiliar = (req, res, next) => {
   }
 };
 
-// Exportar todas las funciones
+// Exportación idéntica a tus otros módulos
 module.exports = {
   verifyToken,
   isAdmin,
