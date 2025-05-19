@@ -1,23 +1,29 @@
 const Category = require('../models/Category');
 
-// Crear nueva categoría
 exports.createCategory = async (req, res) => {
   try {
     const { name, description } = req.body;
 
-    // Validación de campos requeridos
-    if (!name || !description) {
+    // Validación mejorada
+    if (!name || typeof name !== 'string' || !name.trim()) {
       return res.status(400).json({
         success: false,
-        message: 'Nombre y descripción son obligatorios'
+        message: 'El nombre es obligatorio y debe ser texto válido'
       });
     }
 
-    // Verificar si ya existe (case-insensitive)
-    const existingCategory = await Category.findOne({ 
-      name: { $regex: new RegExp(`^${name.trim()}$`, 'i') }
-    });
+    if (!description || typeof description !== 'string' || !description.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'La descripción es obligatoria y debe ser texto válido'
+      });
+    }
 
+    const trimmedName = name.trim();
+    const trimmedDesc = description.trim();
+
+    // Verificar si ya existe (case-sensitive)
+    const existingCategory = await Category.findOne({ name: trimmedName });
     if (existingCategory) {
       return res.status(400).json({
         success: false,
@@ -25,10 +31,9 @@ exports.createCategory = async (req, res) => {
       });
     }
 
-    // Crear y guardar la nueva categoría
     const newCategory = new Category({
-      name: name.trim(),
-      description: description.trim()
+      name: trimmedName,
+      description: trimmedDesc
     });
 
     await newCategory.save();
@@ -38,7 +43,6 @@ exports.createCategory = async (req, res) => {
       message: 'Categoría creada exitosamente',
       data: newCategory
     });
-
   } catch (error) {
     console.error('Error en createCategory:', error);
     
@@ -46,7 +50,7 @@ exports.createCategory = async (req, res) => {
     if (error.code === 11000) {
       return res.status(400).json({
         success: false,
-        message: 'El nombre de categoría ya existe'
+        message: 'Ya existe una categoría con ese nombre'
       });
     }
 
@@ -58,14 +62,12 @@ exports.createCategory = async (req, res) => {
   }
 };
 
-// Obtener todas las categorías
+// Resto de funciones se mantienen igual
 exports.getCategories = async (req, res) => {
   try {
     const categories = await Category.find().sort({ createdAt: -1 });
-    
     res.status(200).json({
       success: true,
-      count: categories.length,
       data: categories
     });
   } catch (error) {
@@ -77,18 +79,15 @@ exports.getCategories = async (req, res) => {
   }
 };
 
-// Obtener categoría por ID
 exports.getCategoryById = async (req, res) => {
   try {
     const category = await Category.findById(req.params.id);
-    
     if (!category) {
       return res.status(404).json({
         success: false,
         message: 'Categoría no encontrada'
       });
     }
-
     res.status(200).json({
       success: true,
       data: category
@@ -102,33 +101,33 @@ exports.getCategoryById = async (req, res) => {
   }
 };
 
-// Actualizar categoría
 exports.updateCategory = async (req, res) => {
   try {
     const { name, description } = req.body;
+    const updateData = {};
 
-    // Verificar si el nuevo nombre ya existe en otra categoría
     if (name) {
-      const existingCategory = await Category.findOne({
-        name: { $regex: new RegExp(`^${name.trim()}$`, 'i') },
+      updateData.name = name.trim();
+      // Verificar si el nuevo nombre ya existe
+      const existing = await Category.findOne({ 
+        name: updateData.name,
         _id: { $ne: req.params.id }
       });
-      
-      if (existingCategory) {
+      if (existing) {
         return res.status(400).json({
           success: false,
-          message: 'Ya existe otra categoría con ese nombre'
+          message: 'Ya existe una categoría con ese nombre'
         });
       }
     }
 
-    const updatedData = {};
-    if (name) updatedData.name = name.trim();
-    if (description) updatedData.description = description.trim();
+    if (description) {
+      updateData.description = description.trim();
+    }
 
     const updatedCategory = await Category.findByIdAndUpdate(
       req.params.id,
-      updatedData,
+      updateData,
       { new: true, runValidators: true }
     );
 
@@ -146,14 +145,6 @@ exports.updateCategory = async (req, res) => {
     });
   } catch (error) {
     console.error('Error en updateCategory:', error);
-    
-    if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: 'El nombre de categoría ya existe'
-      });
-    }
-
     res.status(500).json({
       success: false,
       message: 'Error al actualizar categoría'
@@ -161,22 +152,18 @@ exports.updateCategory = async (req, res) => {
   }
 };
 
-// Eliminar categoría
 exports.deleteCategory = async (req, res) => {
   try {
     const deletedCategory = await Category.findByIdAndDelete(req.params.id);
-    
     if (!deletedCategory) {
       return res.status(404).json({
         success: false,
         message: 'Categoría no encontrada'
       });
     }
-
     res.status(200).json({
       success: true,
-      message: 'Categoría eliminada',
-      data: deletedCategory
+      message: 'Categoría eliminada'
     });
   } catch (error) {
     console.error('Error en deleteCategory:', error);
