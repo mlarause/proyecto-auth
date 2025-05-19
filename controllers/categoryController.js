@@ -1,102 +1,191 @@
-const Category = require("../models/Category");
-const { validatePermissions } = require("../utils/roleValidation");
+const Category = require('../models/Category');
+const mongoose = require('mongoose');
 
-// Crear categoría (Admin o Coordinador)
-exports.createCategory = async (req, res) => {
-  try {
-    validatePermissions(req.user.role, ["admin", "coordinador"]);
+exports.create = async (req, res) => {
+    try {
+        const { name, description } = req.body;
 
-    const { name, description } = req.body;
-    const newCategory = await Category.create({
-      name,
-      description,
-      createdBy: req.user.id,
-    });
+        // Validación de campos requeridos
+        if (!name) {
+            return res.status(400).json({
+                success: false,
+                message: 'El nombre de la categoría es obligatorio'
+            });
+        }
 
-    res.status(201).json({
-      success: true,
-      data: newCategory,
-    });
-  } catch (error) {
-    res.status(error.status || 500).json({
-      success: false,
-      message: error.message,
-    });
-  }
-};
+        // Verificar si la categoría ya existe
+        const existingCategory = await Category.findOne({ name });
+        if (existingCategory) {
+            return res.status(400).json({
+                success: false,
+                message: 'La categoría ya existe'
+            });
+        }
 
-// Obtener todas las categorías (Todos los roles)
-exports.getAllCategories = async (req, res) => {
-  try {
-    const categories = await Category.find().populate("createdBy", "username");
-    res.status(200).json({
-      success: true,
-      data: categories,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error al obtener categorías",
-    });
-  }
-};
+        // Crear nueva categoría
+        const category = await Category.create({
+            name,
+            description: description || '',
+            createdBy: req.userId // ID del usuario que crea la categoría
+        });
 
-// Actualizar categoría (Admin o Coordinador)
-exports.updateCategory = async (req, res) => {
-  try {
-    validatePermissions(req.user.role, ["admin", "coordinador"]);
+        res.status(201).json({
+            success: true,
+            message: 'Categoría creada exitosamente',
+            data: category
+        });
 
-    const { id } = req.params;
-    const { name, description } = req.body;
-
-    const updatedCategory = await Category.findByIdAndUpdate(
-      id,
-      { name, description },
-      { new: true }
-    );
-
-    if (!updatedCategory) {
-      return res.status(404).json({
-        success: false,
-        message: "Categoría no encontrada",
-      });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error al crear categoría',
+            error: error.message
+        });
     }
-
-    res.status(200).json({
-      success: true,
-      data: updatedCategory,
-    });
-  } catch (error) {
-    res.status(error.status || 500).json({
-      success: false,
-      message: error.message,
-    });
-  }
 };
 
-// Eliminar categoría (Solo Admin)
-exports.deleteCategory = async (req, res) => {
-  try {
-    validatePermissions(req.user.role, ["admin"]);
+exports.getAll = async (req, res) => {
+    try {
+        const categories = await Category.find()
+            .populate('createdBy', 'username email')
+            .sort({ createdAt: -1 });
 
-    const { id } = req.params;
-    const deletedCategory = await Category.findByIdAndDelete(id);
+        res.status(200).json({
+            success: true,
+            count: categories.length,
+            data: categories
+        });
 
-    if (!deletedCategory) {
-      return res.status(404).json({
-        success: false,
-        message: "Categoría no encontrada",
-      });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error al obtener categorías',
+            error: error.message
+        });
     }
+};
 
-    res.status(200).json({
-      success: true,
-      message: "Categoría eliminada correctamente",
-    });
-  } catch (error) {
-    res.status(error.status || 500).json({
-      success: false,
-      message: error.message,
-    });
-  }
+exports.getById = async (req, res) => {
+    try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'ID de categoría no válido'
+            });
+        }
+
+        const category = await Category.findById(req.params.id)
+            .populate('createdBy', 'username email');
+
+        if (!category) {
+            return res.status(404).json({
+                success: false,
+                message: 'Categoría no encontrada'
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            data: category
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error al obtener categoría',
+            error: error.message
+        });
+    }
+};
+
+exports.update = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, description } = req.body;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'ID de categoría no válido'
+            });
+        }
+
+        // Verificar si la categoría existe
+        const category = await Category.findById(id);
+        if (!category) {
+            return res.status(404).json({
+                success: false,
+                message: 'Categoría no encontrada'
+            });
+        }
+
+        // Verificar si el nuevo nombre ya existe (excluyendo la categoría actual)
+        if (name && name !== category.name) {
+            const nameExists = await Category.findOne({ name });
+            if (nameExists) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'El nombre de categoría ya está en uso'
+                });
+            }
+        }
+
+        // Actualizar categoría
+        const updatedCategory = await Category.findByIdAndUpdate(
+            id,
+            {
+                name: name || category.name,
+                description: description || category.description
+            },
+            { new: true, runValidators: true }
+        );
+
+        res.status(200).json({
+            success: true,
+            message: 'Categoría actualizada exitosamente',
+            data: updatedCategory
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error al actualizar categoría',
+            error: error.message
+        });
+    }
+};
+
+exports.delete = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'ID de categoría no válido'
+            });
+        }
+
+        const category = await Category.findByIdAndDelete(id);
+
+        if (!category) {
+            return res.status(404).json({
+                success: false,
+                message: 'Categoría no encontrada'
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Categoría eliminada exitosamente',
+            data: category
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error al eliminar categoría',
+            error: error.message
+        });
+    }
 };
