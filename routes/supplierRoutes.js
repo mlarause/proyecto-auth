@@ -1,46 +1,46 @@
 const express = require('express');
 const router = express.Router();
-const supplierController = require('../controllers/supplierController');
-const auth = require('../middlewares/auth');
+const {
+  createSupplier,
+  getAllSuppliers,
+  getSupplierById,
+  updateSupplier,
+  deleteSupplier
+} = require('../controllers/supplierController'); // Importación explícita
 
-// ==================== RUTAS DE PROVEEDORES ====================
+const { verifyToken, checkRole, isAdmin } = require('../middlewares/auth');
 
-// [POST] Crear nuevo proveedor - Admin y Coordinador
-router.post(
-  '/',
-  auth.verifyToken,
-  auth.checkRole(['admin', 'coordinador']),
-  supplierController.createSupplier // Asegúrate que esta función exista en tu controlador
+// Ruta POST - Crear proveedor
+router.post('/',
+  verifyToken,
+  checkRole(['admin', 'coordinador']),
+  createSupplier
 );
 
-// [GET] Obtener todos los proveedores - Todos los roles autenticados
-router.get(
-  '/',
-  auth.verifyToken,
-  supplierController.getAllSuppliers // Asegúrate que esta función exista
+// Ruta GET - Todos los proveedores
+router.get('/',
+  verifyToken,
+  getAllSuppliers
 );
 
-// [GET] Obtener proveedor por ID - Todos los roles autenticados
-router.get(
-  '/:id',
-  auth.verifyToken,
-  supplierController.getSupplierById // Asegúrate que esta función exista
+// Ruta GET - Proveedor por ID
+router.get('/:id',
+  verifyToken,
+  getSupplierById
 );
 
-// [PUT] Actualizar proveedor - Admin y Coordinador
-router.put(
-  '/:id',
-  auth.verifyToken,
-  auth.checkRole(['admin', 'coordinador']),
-  supplierController.updateSupplier // Asegúrate que esta función exista
+// Ruta PUT - Actualizar proveedor
+router.put('/:id',
+  verifyToken,
+  checkRole(['admin', 'coordinador']),
+  updateSupplier
 );
 
-// [DELETE] Eliminar proveedor - Solo Admin
-router.delete(
-  '/:id',
-  auth.verifyToken,
-  auth.isAdmin,
-  supplierController.deleteSupplier // Asegúrate que esta función exista
+// Ruta DELETE - Eliminar proveedor
+router.delete('/:id',
+  verifyToken,
+  isAdmin,
+  deleteSupplier
 );
 
 module.exports = router;
