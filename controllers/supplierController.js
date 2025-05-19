@@ -10,24 +10,15 @@ exports.createSupplier = async (req, res) => {
   try {
     const { name, contact, email, phone, address, products } = req.body;
 
-    // Validar que vienen productos
-    if (!products || products.length === 0) {
+    // Validar productos
+    const validProducts = await Product.countDocuments({ _id: { $in: products } });
+    if (validProducts !== products.length) {
       return res.status(400).json({
         success: false,
-        message: 'Debe asociar al menos un producto'
+        message: 'Uno o más productos no existen'
       });
     }
 
-    // Verificar que los productos existan
-    const existingProducts = await Product.find({ _id: { $in: products } });
-    if (existingProducts.length !== products.length) {
-      return res.status(400).json({
-        success: false,
-        message: 'Algunos productos no existen'
-      });
-    }
-
-    // Crear el proveedor
     const supplier = new Supplier({
       name,
       contact,
@@ -40,26 +31,20 @@ exports.createSupplier = async (req, res) => {
 
     await supplier.save();
 
-    // Obtener datos poblados para la respuesta
-    const result = await Supplier.findById(supplier._id)
-      .populate('products', 'name price')
-      .populate('createdBy', 'name email');
-
     res.status(201).json({
       success: true,
-      data: result
+      data: await Supplier.findById(supplier._id)
+        .populate('products', 'name')
+        .populate('createdBy', 'name')
     });
 
   } catch (error) {
-    console.error('Error en createSupplier:', error);
-    
     if (error.code === 11000) {
       return res.status(400).json({
         success: false,
-        message: 'El proveedor ya existe (nombre o email duplicado)'
+        message: 'El proveedor ya existe'
       });
     }
-
     res.status(500).json({
       success: false,
       message: 'Error al crear proveedor'
