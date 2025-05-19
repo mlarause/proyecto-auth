@@ -3,70 +3,71 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const config = require('../config');
 
-// Controlador para registro
 exports.signup = async (req, res) => {
     try {
-        const { username, email, password, role } = req.body;
+        const { username, email, password, rol } = req.body;
 
         // Validar si usuario existe
         const userExists = await User.findOne({ email });
         if (userExists) {
             return res.status(400).json({
                 success: false,
-                message: 'User already exists'
+                message: 'El usuario ya existe'
             });
         }
 
         // Encriptar contraseña
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
 
         // Crear usuario
-        const user = await User.create({
+        const user = new User({
             username,
             email,
             password: hashedPassword,
-            role: role || 'auxiliar'
+            rol: rol || 'auxiliar'
         });
 
-        // Generar token
+        await user.save();
+
+        // Crear token (IMPORTANTE: usando "rol")
         const token = jwt.sign(
-            { id: user._id, role: user.role },
+            { id: user._id, rol: user.rol },
             config.SECRET,
             { expiresIn: '1h' }
         );
 
         res.status(201).json({
             success: true,
-            message: 'User registered successfully',
+            message: 'Usuario registrado correctamente',
             token,
             user: {
                 id: user._id,
                 username: user.username,
                 email: user.email,
-                role: user.role
+                rol: user.rol
             }
         });
 
     } catch (error) {
         res.status(500).json({
             success: false,
-            message: 'Registration failed',
+            message: 'Error al registrar usuario',
             error: error.message
         });
     }
 };
 
-// Controlador para login
 exports.signin = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // Buscar usuario
+        // Validar usuario
         const user = await User.findOne({ email });
         if (!user) {
             return res.status(404).json({
                 success: false,
-                message: 'User not found'
+                message: 'Usuario no encontrado'
             });
         }
 
@@ -75,33 +76,33 @@ exports.signin = async (req, res) => {
         if (!validPassword) {
             return res.status(400).json({
                 success: false,
-                message: 'Invalid credentials'
+                message: 'Credenciales inválidas'
             });
         }
 
-        // Generar token
+        // Crear token (IMPORTANTE: usando "rol")
         const token = jwt.sign(
-            { id: user._id, role: user.role },
+            { id: user._id, rol: user.rol },
             config.SECRET,
             { expiresIn: '1h' }
         );
 
         res.status(200).json({
             success: true,
-            message: 'Login successful',
+            message: 'Login exitoso',
             token,
             user: {
                 id: user._id,
                 username: user.username,
                 email: user.email,
-                role: user.role
+                rol: user.rol
             }
         });
 
     } catch (error) {
         res.status(500).json({
             success: false,
-            message: 'Login failed',
+            message: 'Error al iniciar sesión',
             error: error.message
         });
     }
