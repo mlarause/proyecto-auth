@@ -1,9 +1,9 @@
 const jwt = require('jsonwebtoken');
 const { TOKEN_SECRET } = require('../config/auth.config');
 
-// Función verifyToken (idéntica a la de categorías)
+// 1. Función verifyToken
 const verifyToken = (req, res, next) => {
-  const token = req.headers['x-access-token'] || req.cookies.token;
+  const token = req.headers['x-access-token'] || req.cookies?.token;
   
   if (!token) {
     return res.status(403).json({ 
@@ -19,38 +19,40 @@ const verifyToken = (req, res, next) => {
         message: 'Token inválido o expirado' 
       });
     }
-    
     req.userId = decoded.id;
     req.userRole = decoded.role;
     next();
   });
 };
 
-// Funciones de roles (iguales a las de categorías)
+// 2. Función checkRole
+const checkRole = (roles = []) => {
+  return (req, res, next) => {
+    if (!roles.includes(req.userRole)) {
+      return res.status(403).json({ 
+        success: false, 
+        message: `Acceso denegado. Rol requerido: ${roles.join(', ')}` 
+      });
+    }
+    next();
+  };
+};
+
+// 3. Función isAdmin
 const isAdmin = (req, res, next) => {
   if (req.userRole === 'admin') {
     next();
   } else {
     return res.status(403).json({ 
       success: false, 
-      message: 'Se requiere rol admin' 
+      message: 'Se requiere rol de administrador' 
     });
   }
 };
 
-const isCoordinador = (req, res, next) => {
-  if (['admin', 'coordinador'].includes(req.userRole)) {
-    next();
-  } else {
-    return res.status(403).json({ 
-      success: false, 
-      message: 'Se requiere rol coordinador o admin' 
-    });
-  }
-};
-
+// Exportar como objeto
 module.exports = {
   verifyToken,
-  isAdmin,
-  isCoordinador
+  checkRole,
+  isAdmin
 };
