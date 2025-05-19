@@ -3,37 +3,45 @@ const Supplier = require("../models/Supplier");
 // Crear proveedor
 exports.createSupplier = async (req, res) => {
   try {
-    // Validar datos requeridos
-    const { name, contact, email, phone, address } = req.body;
+    const { name, contact, email, phone, address, products } = req.body;
+
+    // Validación manual de campos requeridos
     if (!name || !contact || !email || !phone || !address) {
       return res.status(400).json({
         success: false,
-        message: "Faltan campos obligatorios"
+        message: 'Todos los campos obligatorios deben ser proporcionados'
       });
     }
 
-    // Verificar si el email ya existe
-    const existingSupplier = await Supplier.findOne({ email });
-    if (existingSupplier) {
-      return res.status(400).json({
-        success: false,
-        message: "El correo ya está registrado"
-      });
+    // Verificar si el producto existe (si se proporciona)
+    if (products && products.length > 0) {
+      // Aquí deberías agregar validación de los IDs de productos
     }
 
     const newSupplier = new Supplier({
-      ...req.body,
-      createdBy: req.userId // Asignar el usuario que lo creó
+      name,
+      contact,
+      email,
+      phone,
+      address,
+      products,
+      createdBy: req.userId
     });
 
     await newSupplier.save();
-    res.status(201).json({ success: true, data: newSupplier });
+    
+    return res.status(201).json({
+      success: true,
+      data: newSupplier,
+      message: 'Proveedor creado exitosamente'
+    });
 
   } catch (error) {
-    console.error("Error al crear proveedor:", error);
-    res.status(500).json({
+    console.error('Error al crear proveedor:', error.message);
+    
+    return res.status(500).json({
       success: false,
-      message: error.message || "Algo salió mal al crear el proveedor"
+      message: error.message || 'Error al crear el proveedor'
     });
   }
 };
