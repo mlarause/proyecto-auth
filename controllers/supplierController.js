@@ -1,35 +1,59 @@
-const Supplier = require("../models/Supplier");
+const Supplier = require('../models/Supplier');
+const Product = require('../models/Product');
 
-// Crear proveedor
 exports.createSupplier = async (req, res) => {
   try {
     const { name, contact, email, phone, address, products } = req.body;
 
-    // Validación manual de campos requeridos
-    if (!name || !contact || !email || !phone || !address) {
+    // 1. Validación de campos requeridos
+    const requiredFields = { name, contact, email, phone, address };
+    const missingFields = Object.entries(requiredFields)
+      .filter(([_, value]) => !value)
+      .map(([key]) => key);
+
+    if (missingFields.length > 0) {
       return res.status(400).json({
         success: false,
-        message: 'Todos los campos obligatorios deben ser proporcionados'
+        message: `Faltan campos obligatorios: ${missingFields.join(', ')}`
       });
     }
 
-    // Verificar si el producto existe (si se proporciona)
-    if (products && products.length > 0) {
-      // Aquí deberías agregar validación de los IDs de productos
+    // 2. Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Formato de email inválido'
+      });
     }
 
+    // 3. Verificar productos existentes
+    if (products && products.length > 0) {
+      const existingProducts = await Product.countDocuments({ 
+        _id: { $in: products } 
+      });
+      
+      if (existingProducts !== products.length) {
+        return res.status(400).json({
+          success: false,
+          message: 'Uno o más productos no existen'
+        });
+      }
+    }
+
+    // 4. Crear proveedor
     const newSupplier = new Supplier({
       name,
       contact,
       email,
       phone,
       address,
-      products,
+      products: products || [],
       createdBy: req.userId
     });
 
     await newSupplier.save();
-    
+
     return res.status(201).json({
       success: true,
       data: newSupplier,
@@ -37,65 +61,20 @@ exports.createSupplier = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error al crear proveedor:', error.message);
-    
+    console.error('Error en createSupplier:', error);
+
+    // Manejo específico de errores
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: 'El correo electrónico ya está registrado'
+      });
+    }
+
     return res.status(500).json({
       success: false,
-      message: error.message || 'Error al crear el proveedor'
+      message: 'Error al crear el proveedor',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
-  }
-};
-
-// Obtener todos los proveedores
-exports.getAllSuppliers = async (req, res) => {
-  try {
-    const suppliers = await Supplier.find();
-    res.status(200).json({ success: true, data: suppliers });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-// Obtener un proveedor por ID
-exports.getSupplierById = async (req, res) => {
-  try {
-    const supplier = await Supplier.findById(req.params.id);
-    if (!supplier) {
-      return res.status(404).json({ success: false, message: "Proveedor no encontrado" });
-    }
-    res.status(200).json({ success: true, data: supplier });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-// Actualizar proveedor
-exports.updateSupplier = async (req, res) => {
-  try {
-    const updatedSupplier = await Supplier.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
-
-    if (!updatedSupplier) {
-      return res.status(404).json({ success: false, message: "Proveedor no encontrado" });
-    }
-    res.status(200).json({ success: true, data: updatedSupplier });
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-};
-
-// Eliminar proveedor
-exports.deleteSupplier = async (req, res) => {
-  try {
-    const deletedSupplier = await Supplier.findByIdAndDelete(req.params.id);
-    if (!deletedSupplier) {
-      return res.status(404).json({ success: false, message: "Proveedor no encontrado" });
-    }
-    res.status(200).json({ success: true, message: "Proveedor eliminado" });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
   }
 };
