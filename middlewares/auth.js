@@ -13,7 +13,7 @@ exports.authenticate = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id);
+    const user = await User.findById(decoded.id).select('-password');
 
     if (!user) {
       return res.status(401).json({ 
@@ -34,12 +34,9 @@ exports.authenticate = async (req, res, next) => {
 };
 
 exports.authorize = (roles = []) => {
-  if (typeof roles === 'string') {
-    roles = [roles];
-  }
-
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {
+      console.log(`Usuario con rol ${req.user.role} intentó acceder a recurso que requiere ${roles}`);
       return res.status(403).json({
         success: false,
         message: 'No tienes permiso para realizar esta acción'
