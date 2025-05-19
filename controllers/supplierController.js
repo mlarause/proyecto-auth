@@ -1,6 +1,6 @@
 const Supplier = require('../models/Supplier');
 
-// CREATE
+// [CREATE] Crear nuevo proveedor
 exports.createSupplier = async (req, res) => {
   try {
     const { name, contact, email, phone, address, products } = req.body;
@@ -27,27 +27,28 @@ exports.createSupplier = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      data: newSupplier
+      data: newSupplier,
+      message: 'Proveedor creado exitosamente'
     });
 
   } catch (error) {
     if (error.code === 11000) {
       return res.status(400).json({
         success: false,
-        message: 'El proveedor ya existe'
+        message: 'El correo o nombre ya están registrados'
       });
     }
     res.status(500).json({
       success: false,
-      message: error.message
+      message: 'Error al crear proveedor: ' + error.message
     });
   }
 };
 
-// GET ALL
+// [READ] Obtener todos los proveedores
 exports.getAllSuppliers = async (req, res) => {
   try {
-    const suppliers = await Supplier.find();
+    const suppliers = await Supplier.find().populate('products');
     res.status(200).json({
       success: true,
       data: suppliers
@@ -55,21 +56,23 @@ exports.getAllSuppliers = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: 'Error al obtener proveedores: ' + error.message
     });
   }
 };
 
-// GET ONE
+// [READ] Obtener un proveedor por ID
 exports.getSupplierById = async (req, res) => {
   try {
-    const supplier = await Supplier.findById(req.params.id);
+    const supplier = await Supplier.findById(req.params.id).populate('products');
+    
     if (!supplier) {
       return res.status(404).json({
         success: false,
         message: 'Proveedor no encontrado'
       });
     }
+
     res.status(200).json({
       success: true,
       data: supplier
@@ -77,12 +80,12 @@ exports.getSupplierById = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: 'Error al obtener proveedor: ' + error.message
     });
   }
 };
 
-// UPDATE
+// [UPDATE] Actualizar proveedor
 exports.updateSupplier = async (req, res) => {
   try {
     const updatedSupplier = await Supplier.findByIdAndUpdate(
@@ -90,42 +93,76 @@ exports.updateSupplier = async (req, res) => {
       req.body,
       { new: true, runValidators: true }
     );
+
     if (!updatedSupplier) {
       return res.status(404).json({
         success: false,
         message: 'Proveedor no encontrado'
       });
     }
+
     res.status(200).json({
       success: true,
-      data: updatedSupplier
+      data: updatedSupplier,
+      message: 'Proveedor actualizado exitosamente'
     });
   } catch (error) {
-    res.status(400).json({
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: 'El correo o nombre ya están registrados'
+      });
+    }
+    res.status(500).json({
       success: false,
-      message: error.message
+      message: 'Error al actualizar proveedor: ' + error.message
     });
   }
 };
 
-// DELETE
+// [DELETE] Eliminar proveedor
 exports.deleteSupplier = async (req, res) => {
   try {
-    const supplier = await Supplier.findByIdAndDelete(req.params.id);
-    if (!supplier) {
+    const deletedSupplier = await Supplier.findByIdAndDelete(req.params.id);
+
+    if (!deletedSupplier) {
       return res.status(404).json({
         success: false,
         message: 'Proveedor no encontrado'
       });
     }
+
     res.status(200).json({
       success: true,
-      message: 'Proveedor eliminado'
+      message: 'Proveedor eliminado exitosamente'
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: 'Error al eliminar proveedor: ' + error.message
+    });
+  }
+};
+
+// [SEARCH] Buscar proveedores (similar a categorías)
+exports.searchSuppliers = async (req, res) => {
+  try {
+    const { query } = req.params;
+    const suppliers = await Supplier.find({
+      $or: [
+        { name: { $regex: query, $options: 'i' } },
+        { email: { $regex: query, $options: 'i' } }
+      ]
+    });
+
+    res.status(200).json({
+      success: true,
+      data: suppliers
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error en búsqueda: ' + error.message
     });
   }
 };
