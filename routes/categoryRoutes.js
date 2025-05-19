@@ -3,7 +3,7 @@ const router = express.Router();
 const { verifyToken, isAdmin } = require('../middlewares/authJwt');
 const categoryController = require('../controllers/categoryController');
 
-// Rutas para categorías
+// CRUD Categorías
 router.post('/', [verifyToken, isAdmin], categoryController.create);
 router.get('/', verifyToken, categoryController.getAll);
 router.get('/:id', verifyToken, categoryController.getById);
