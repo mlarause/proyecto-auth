@@ -1,16 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const { verifyToken } = require('../middlewares/auth');
-const { checkRole } = require('../middlewares/role');
-const {
-  createSupplier,
-  getAllSuppliers
-} = require('../controllers/suppliercontroller');
+const supplierController = require('../controllers/supplierController');
+const { authenticate, authorize } = require('../middlewares/auth');
 
-// Admin y Coordinador pueden crear
-router.post('/', verifyToken, checkRole(['admin', 'coordinador']), createSupplier);
+router.use(authenticate);
+router.use(authorize('admin'));
 
-// Todos los roles pueden leer
-router.get('/', verifyToken, getAllSuppliers);
+router.post('/', supplierController.createSupplier);
+router.get('/', supplierController.getSuppliers);
+router.get('/:id', supplierController.getSupplier);
+router.put('/:id', supplierController.updateSupplier);
+router.delete('/:id', supplierController.deleteSupplier);
 
 module.exports = router;
