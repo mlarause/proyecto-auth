@@ -1,35 +1,29 @@
 const jwt = require('jsonwebtoken');
-const config = require('../config/auth.config');
-const User = require('../models/User');
+const config = require('../config');
 
 exports.verifyToken = (req, res, next) => {
-  const token = req.headers['x-access-token'];
+  let token = req.headers['x-access-token'] || req.headers['authorization'];
   
-  if (!token) return res.status(403).json({ message: "No se proporcionó token" });
+  if (!token) {
+    return res.status(403).json({
+      success: false,
+      message: 'No se proporcionó token'
+    });
+  }
 
-  jwt.verify(token, config.secret, (err, decoded) => {
-    if (err) return res.status(401).json({ message: "No autorizado" });
+  if (token.startsWith('Bearer ')) {
+    token = token.slice(7, token.length);
+  }
+
+  jwt.verify(token, config.SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token inválido'
+      });
+    }
     req.userId = decoded.id;
+    req.userRole = decoded.role;
     next();
   });
-};
-
-exports.isAdmin = async (req, res, next) => {
-  try {
-    const user = await User.findById(req.userId);
-    if (user.rol === 'admin') return next();
-    res.status(403).json({ message: "Requiere rol de administrador" });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-exports.isCoordinador = async (req, res, next) => {
-  try {
-    const user = await User.findById(req.userId);
-    if (user.rol === 'coordinador' || user.rol === 'admin') return next();
-    res.status(403).json({ message: "Requiere rol de coordinador o admin" });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
 };
