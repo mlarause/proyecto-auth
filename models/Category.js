@@ -17,7 +17,7 @@ const categorySchema = new mongoose.Schema({
   versionKey: false
 });
 
-// Manejar error de duplicado (E11000)
+// Manejar error de duplicado
 categorySchema.post('save', function(error, doc, next) {
   if (error.name === 'MongoError' && error.code === 11000) {
     next(new Error('Ya existe una categoría con ese nombre'));
