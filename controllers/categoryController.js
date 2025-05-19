@@ -2,18 +2,20 @@ const Category = require('../models/Category');
 
 exports.createCategory = async (req, res) => {
   try {
-    const { name, description } = req.body;
+    const { nombre, description } = req.body; // Cambié 'name' a 'nombre'
 
-    // Verificar si la categoría ya existe
-    const existingCategory = await Category.findOne({ name });
-    if (existingCategory) {
+    if (!nombre || !description) {
       return res.status(400).json({
         success: false,
-        message: 'Ya existe una categoría con ese nombre'
+        message: 'Nombre y descripción son obligatorios'
       });
     }
 
-    const newCategory = new Category({ name, description });
+    const newCategory = new Category({
+      nombre: nombre.trim(),
+      description: description.trim()
+    });
+
     await newCategory.save();
 
     res.status(201).json({
@@ -22,7 +24,15 @@ exports.createCategory = async (req, res) => {
       data: newCategory
     });
   } catch (error) {
-    console.error(error);
+    console.error('Error al crear categoría:', error);
+    
+    if (error.message.includes('duplicate key')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Ya existe una categoría con ese nombre'
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: error.message || 'Error al crear categoría'
@@ -30,6 +40,7 @@ exports.createCategory = async (req, res) => {
   }
 };
 
+// Mantengo todas tus funciones existentes sin cambios
 exports.getCategories = async (req, res) => {
   try {
     const categories = await Category.find();
