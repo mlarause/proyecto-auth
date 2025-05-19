@@ -2,12 +2,12 @@ const express = require('express');
 const app = express();
 
 // Importar rutas
-const authRoutes = require('./routes/auth.routes');
-const userRoutes = require('./routes/user.routes');
-const categoryRoutes = require('./routes/category.routes');
-const subcategoryRoutes = require('./routes/subcategory.routes');
-const productRoutes = require('./routes/product.routes');
-const supplierRoutes = require('./routes/supplier.routes');
+const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
+const categoryRoutes = require('./routes/categoryRoutes');
+const subcategoryRoutes = require('./routes/subcategoryRoutes');
+const productRoutes = require('./routes/productRoutes');
+const supplierRoutes = require('./routes/supplierRoutes');
 
 // Middlewares
 app.use(express.json());
