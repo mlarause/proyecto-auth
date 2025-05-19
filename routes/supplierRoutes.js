@@ -15,12 +15,11 @@ const validateSupplier = [
 // Aplicar autenticación a todas las rutas
 router.use(authenticate);
 
-// Rutas
-router.post('/', authorize(['admin', 'manager']), validateSupplier, supplierController.createSupplier);
-router.get('/', authorize(['admin', 'manager', 'user']), supplierController.getSuppliers);
-router.get('/:id', authorize(['admin', 'manager', 'user']), supplierController.getSupplierById);
-router.put('/:id', authorize(['admin', 'manager']), validateSupplier, supplierController.updateSupplier);
+// Rutas con autorización específica
+router.post('/', authorize(['admin', 'supplier_manager']), validateSupplier, supplierController.createSupplier);
+router.get('/', authorize(['admin', 'supplier_manager', 'user']), supplierController.getSuppliers);
+router.get('/:id', authorize(['admin', 'supplier_manager', 'user']), supplierController.getSupplierById);
+router.put('/:id', authorize(['admin', 'supplier_manager']), validateSupplier, supplierController.updateSupplier);
 router.delete('/:id', authorize(['admin']), supplierController.deleteSupplier);
-router.get('/product/:productId', authorize(['admin', 'manager', 'user']), supplierController.getSuppliersByProduct);
 
 module.exports = router;
