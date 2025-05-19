@@ -1,21 +1,29 @@
 const mongoose = require('mongoose');
 
-const CategorySchema = new mongoose.Schema({
-    name: {
-        type: String,
-        required: true,
-        unique: true,
-        trim: true
-    },
-    description: {
-        type: String,
-        default: ""
-    },
-    createdBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
-    }
-}, { timestamps: true });
+const categorySchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: [true, 'El nombre es obligatorio'],
+    unique: true,
+    trim: true
+  },
+  description: {
+    type: String,
+    required: [true, 'La descripción es obligatoria'],
+    trim: true
+  }
+}, {
+  timestamps: true,
+  versionKey: false
+});
 
-module.exports = mongoose.model('Category', CategorySchema);
+// Manejar error de duplicado (E11000)
+categorySchema.post('save', function(error, doc, next) {
+  if (error.name === 'MongoError' && error.code === 11000) {
+    next(new Error('Ya existe una categoría con ese nombre'));
+  } else {
+    next(error);
+  }
+});
+
+module.exports = mongoose.model('Category', categorySchema);
