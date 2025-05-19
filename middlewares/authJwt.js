@@ -1,25 +1,35 @@
 const jwt = require('jsonwebtoken');
 const config = require('../config');
 
-exports.verifyToken = (req, res, next) => {
-  let token = req.headers['x-access-token'] || req.headers['authorization'];
-  
-  if (!token) return res.status(403).json({ message: 'No token provided' });
+exports.verificarToken = (req, res, next) => {
+    const token = req.headers['authorization'];
 
-  if (token.startsWith('Bearer ')) token = token.slice(7);
+    if (!token) {
+        return res.status(403).json({
+            exito: false,
+            mensaje: 'Token no proporcionado'
+        });
+    }
 
-  jwt.verify(token, config.SECRET, (err, decoded) => {
-    if (err) return res.status(401).json({ message: 'Unauthorized' });
-    
-    req.userId = decoded.id;
-    req.userRole = decoded.role;
-    next();
-  });
+    jwt.verify(token.replace('Bearer ', ''), config.SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(401).json({
+                exito: false,
+                mensaje: 'Token inválido'
+            });
+        }
+        req.usuarioId = decoded.id;
+        req.usuarioRol = decoded.rol;
+        next();
+    });
 };
 
-exports.isAdmin = (req, res, next) => {
-  if (req.userRol !== 'admin') {
-    return res.status(403).json({ message: 'Require Admin Role' });
-  }
-  next();
+exports.esAdmin = (req, res, next) => {
+    if (req.usuarioRol !== 'admin') {
+        return res.status(403).json({
+            exito: false,
+            mensaje: 'Se requiere rol de administrador'
+        });
+    }
+    next();
 };

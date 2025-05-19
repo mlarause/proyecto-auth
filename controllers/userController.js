@@ -50,4 +50,22 @@ exports.delete = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
+
+  const User = require('../models/User');
+
+exports.listarUsuarios = async (req, res) => {
+    try {
+        const usuarios = await User.find({}, '-password');
+        res.status(200).json({
+            exito: true,
+            datos: usuarios
+        });
+    } catch (error) {
+        res.status(500).json({
+            exito: false,
+            mensaje: 'Error al listar usuarios',
+            error: error.message
+        });
+    }
+};
 };
