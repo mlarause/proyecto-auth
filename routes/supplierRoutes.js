@@ -1,46 +1,39 @@
 const express = require('express');
 const router = express.Router();
-const {
-  createSupplier,
-  getAllSuppliers,
-  getSupplierById,
-  updateSupplier,
-  deleteSupplier
-} = require('../controllers/supplierController'); // Importación explícita
+const supplierController = require('../controllers/supplierController');
+const auth = require('../middlewares/auth');
 
-const { verifyToken, checkRole, isAdmin } = require('../middlewares/auth');
-
-// Ruta POST - Crear proveedor
+// CREATE - Solo admin y coordinador
 router.post('/',
-  verifyToken,
-  checkRole(['admin', 'coordinador']),
-  createSupplier
+  auth.verifyToken,
+  auth.checkRole(['admin', 'coordinador']),
+  supplierController.createSupplier
 );
 
-// Ruta GET - Todos los proveedores
+// READ ALL - Todos autenticados
 router.get('/',
-  verifyToken,
-  getAllSuppliers
+  auth.verifyToken,
+  supplierController.getAllSuppliers
 );
 
-// Ruta GET - Proveedor por ID
+// READ ONE - Todos autenticados
 router.get('/:id',
-  verifyToken,
-  getSupplierById
+  auth.verifyToken,
+  supplierController.getSupplierById
 );
 
-// Ruta PUT - Actualizar proveedor
+// UPDATE - Solo admin y coordinador
 router.put('/:id',
-  verifyToken,
-  checkRole(['admin', 'coordinador']),
-  updateSupplier
+  auth.verifyToken,
+  auth.checkRole(['admin', 'coordinador']),
+  supplierController.updateSupplier
 );
 
-// Ruta DELETE - Eliminar proveedor
+// DELETE - Solo admin
 router.delete('/:id',
-  verifyToken,
-  isAdmin,
-  deleteSupplier
+  auth.verifyToken,
+  auth.isAdmin,
+  supplierController.deleteSupplier
 );
 
 module.exports = router;

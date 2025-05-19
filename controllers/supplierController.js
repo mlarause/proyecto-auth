@@ -1,73 +1,131 @@
 const Supplier = require('../models/Supplier');
 
-// Controlador para crear proveedor
-const createSupplier = async (req, res) => {
+// CREATE
+exports.createSupplier = async (req, res) => {
   try {
-    const supplier = new Supplier(req.body);
-    await supplier.save();
-    res.status(201).json({ success: true, data: supplier });
+    const { name, contact, email, phone, address, products } = req.body;
+
+    // Validación como en tu controlador de categorías
+    if (!name || !contact || !email || !phone || !address) {
+      return res.status(400).json({
+        success: false,
+        message: 'Faltan campos obligatorios'
+      });
+    }
+
+    const newSupplier = new Supplier({
+      name,
+      contact,
+      email,
+      phone,
+      address,
+      products: products || [],
+      createdBy: req.userId
+    });
+
+    await newSupplier.save();
+
+    res.status(201).json({
+      success: true,
+      data: newSupplier
+    });
+
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: 'El proveedor ya existe'
+      });
+    }
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 };
 
-// Controlador para obtener todos los proveedores
-const getAllSuppliers = async (req, res) => {
+// GET ALL
+exports.getAllSuppliers = async (req, res) => {
   try {
     const suppliers = await Supplier.find();
-    res.status(200).json({ success: true, data: suppliers });
+    res.status(200).json({
+      success: true,
+      data: suppliers
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 };
 
-// Controlador para obtener un proveedor por ID
-const getSupplierById = async (req, res) => {
+// GET ONE
+exports.getSupplierById = async (req, res) => {
   try {
     const supplier = await Supplier.findById(req.params.id);
     if (!supplier) {
-      return res.status(404).json({ success: false, message: 'Proveedor no encontrado' });
+      return res.status(404).json({
+        success: false,
+        message: 'Proveedor no encontrado'
+      });
     }
-    res.status(200).json({ success: true, data: supplier });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-// Controlador para actualizar proveedor
-const updateSupplier = async (req, res) => {
-  try {
-    const supplier = await Supplier.findByIdAndUpdate(req.params.id, req.body, { 
-      new: true,
-      runValidators: true
+    res.status(200).json({
+      success: true,
+      data: supplier
     });
-    if (!supplier) {
-      return res.status(404).json({ success: false, message: 'Proveedor no encontrado' });
-    }
-    res.status(200).json({ success: true, data: supplier });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 };
 
-// Controlador para eliminar proveedor
-const deleteSupplier = async (req, res) => {
+// UPDATE
+exports.updateSupplier = async (req, res) => {
+  try {
+    const updatedSupplier = await Supplier.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+    if (!updatedSupplier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Proveedor no encontrado'
+      });
+    }
+    res.status(200).json({
+      success: true,
+      data: updatedSupplier
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// DELETE
+exports.deleteSupplier = async (req, res) => {
   try {
     const supplier = await Supplier.findByIdAndDelete(req.params.id);
     if (!supplier) {
-      return res.status(404).json({ success: false, message: 'Proveedor no encontrado' });
+      return res.status(404).json({
+        success: false,
+        message: 'Proveedor no encontrado'
+      });
     }
-    res.status(200).json({ success: true, message: 'Proveedor eliminado' });
+    res.status(200).json({
+      success: true,
+      message: 'Proveedor eliminado'
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
-};
-
-// Exportación explícita de todos los controladores
-module.exports = {
-  createSupplier,
-  getAllSuppliers,
-  getSupplierById,
-  updateSupplier,
-  deleteSupplier
 };
