@@ -3,11 +3,11 @@ const config = require('../config');
 
 exports.verifyToken = (req, res, next) => {
     const token = req.headers['authorization'];
-    
+
     if (!token) {
         return res.status(403).json({
             success: false,
-            message: 'No se proporcionó token'
+            message: 'Token no proporcionado'
         });
     }
 
@@ -19,13 +19,13 @@ exports.verifyToken = (req, res, next) => {
             });
         }
         req.userId = decoded.id;
-        req.userRole = decoded.role;
+        req.userRol = decoded.rol; // IMPORTANTE: "rol" no "role"
         next();
     });
 };
 
 exports.isAdmin = (req, res, next) => {
-    if (req.userRole !== 'admin') {
+    if (req.userRol !== 'admin') {
         return res.status(403).json({
             success: false,
             message: 'Se requieren privilegios de administrador'
