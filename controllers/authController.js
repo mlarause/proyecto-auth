@@ -3,106 +3,105 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const config = require('../config');
 
-exports.registrar = async (req, res) => {
+// Controlador para registro
+exports.signup = async (req, res) => {
     try {
-        const { nombre, email, password, rol } = req.body;
+        const { username, email, password, role } = req.body;
 
-        // Verificar si el usuario ya existe
-        const existeUsuario = await User.findOne({ email });
-        if (existeUsuario) {
+        // Validar si usuario existe
+        const userExists = await User.findOne({ email });
+        if (userExists) {
             return res.status(400).json({
-                exito: false,
-                mensaje: 'El usuario ya existe'
+                success: false,
+                message: 'User already exists'
             });
         }
 
         // Encriptar contraseña
-        const salt = await bcrypt.genSalt(10);
-        const passwordEncriptada = await bcrypt.hash(password, salt);
+        const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Crear nuevo usuario
-        const usuario = new User({
-            nombre,
+        // Crear usuario
+        const user = await User.create({
+            username,
             email,
-            password: passwordEncriptada,
-            rol: rol || 'auxiliar'
+            password: hashedPassword,
+            role: role || 'auxiliar'
         });
 
-        await usuario.save();
-
-        // Crear token JWT
+        // Generar token
         const token = jwt.sign(
-            { id: usuario._id, rol: usuario.rol },
+            { id: user._id, role: user.role },
             config.SECRET,
             { expiresIn: '1h' }
         );
 
         res.status(201).json({
-            exito: true,
-            mensaje: 'Usuario registrado correctamente',
+            success: true,
+            message: 'User registered successfully',
             token,
-            usuario: {
-                id: usuario._id,
-                nombre: usuario.nombre,
-                email: usuario.email,
-                rol: usuario.rol
+            user: {
+                id: user._id,
+                username: user.username,
+                email: user.email,
+                role: user.role
             }
         });
 
     } catch (error) {
         res.status(500).json({
-            exito: false,
-            mensaje: 'Error al registrar usuario',
+            success: false,
+            message: 'Registration failed',
             error: error.message
         });
     }
 };
 
-exports.login = async (req, res) => {
+// Controlador para login
+exports.signin = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // Validar usuario
-        const usuario = await User.findOne({ email });
-        if (!usuario) {
+        // Buscar usuario
+        const user = await User.findOne({ email });
+        if (!user) {
             return res.status(404).json({
-                exito: false,
-                mensaje: 'Usuario no encontrado'
+                success: false,
+                message: 'User not found'
             });
         }
 
         // Validar contraseña
-        const passwordValida = await bcrypt.compare(password, usuario.password);
-        if (!passwordValida) {
+        const validPassword = await bcrypt.compare(password, user.password);
+        if (!validPassword) {
             return res.status(400).json({
-                exito: false,
-                mensaje: 'Credenciales inválidas'
+                success: false,
+                message: 'Invalid credentials'
             });
         }
 
-        // Crear token JWT
+        // Generar token
         const token = jwt.sign(
-            { id: usuario._id, rol: usuario.rol },
+            { id: user._id, role: user.role },
             config.SECRET,
             { expiresIn: '1h' }
         );
 
         res.status(200).json({
-            exito: true,
-            mensaje: 'Login exitoso',
+            success: true,
+            message: 'Login successful',
             token,
-            usuario: {
-                id: usuario._id,
-                nombre: usuario.nombre,
-                email: usuario.email,
-                rol: usuario.rol
+            user: {
+                id: user._id,
+                username: user.username,
+                email: user.email,
+                role: user.role
             }
         });
 
     } catch (error) {
         res.status(500).json({
-            exito: false,
-            mensaje: 'Error al iniciar sesión',
+            success: false,
+            message: 'Login failed',
             error: error.message
         });
     }
