@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const config = require('../config');
 
-// Función para registrar usuarios
+// Controlador para registro
 exports.signup = async (req, res) => {
     try {
         const { username, email, password, rol } = req.body;
@@ -12,7 +12,7 @@ exports.signup = async (req, res) => {
         if (!username || !email || !password) {
             return res.status(400).json({
                 success: false,
-                message: 'Faltan campos obligatorios'
+                message: 'Todos los campos son requeridos'
             });
         }
 
@@ -37,20 +37,17 @@ exports.signup = async (req, res) => {
             rol: rol || 'auxiliar'
         });
 
-        // Guardar en la base de datos
+        // Guardar usuario
         const savedUser = await newUser.save();
 
-        // Crear token JWT
+        // Crear token
         const token = jwt.sign(
-            {
-                id: savedUser._id,
-                rol: savedUser.rol
-            },
+            { id: savedUser._id, rol: savedUser.rol },
             config.SECRET,
             { expiresIn: '1h' }
         );
 
-        // Responder sin enviar la contraseña
+        // Responder sin password
         const userResponse = {
             _id: savedUser._id,
             username: savedUser.username,
@@ -76,7 +73,7 @@ exports.signup = async (req, res) => {
     }
 };
 
-// Función para iniciar sesión
+// Controlador para login
 exports.signin = async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -109,10 +106,7 @@ exports.signin = async (req, res) => {
 
         // Generar token
         const token = jwt.sign(
-            {
-                id: user._id,
-                rol: user.rol
-            },
+            { id: user._id, rol: user.rol },
             config.SECRET,
             { expiresIn: '1h' }
         );

@@ -4,29 +4,42 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const config = require('./config');
 
-const app = express();
+// Importar rutas
+const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
 
-// Conexión simplificada a MongoDB (versión actual)
-mongoose.connect(config.MONGODB_URI)
-  .then(() => console.log('✅ MongoDB connected'))
-  .catch(err => console.error('❌ MongoDB connection error:', err));
+// Configuración de Express
+const app = express();
 
 // Middlewares
 app.use(cors());
 app.use(express.json());
 
-// Rutas
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/users', require('./routes/userRoutes'));
+// Conexión a MongoDB
+mongoose.connect(config.MONGODB_URI)
+  .then(() => console.log('✅ Conectado a MongoDB'))
+  .catch(err => console.error('❌ Error de conexión a MongoDB:', err));
 
-// Ruta básica
-app.get('/', (req, res) => res.send('API funcionando'));
+// Rutas
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+
+// Ruta de prueba
+app.get('/', (req, res) => {
+  res.send('🚀 API funcionando correctamente');
+});
 
 // Manejo de errores
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ message: 'Internal Server Error' });
+  res.status(500).json({
+    success: false,
+    message: 'Error interno del servidor'
+  });
 });
 
+// Iniciar servidor
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🔥 Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🔥 Servidor corriendo en http://localhost:${PORT}`);
+});
