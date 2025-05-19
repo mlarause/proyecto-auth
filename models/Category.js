@@ -5,8 +5,7 @@ const categorySchema = new mongoose.Schema({
     type: String,
     required: [true, 'El nombre es obligatorio'],
     unique: true,
-    trim: true,
-    lowercase: true // Convertir a minúsculas para evitar duplicados case-sensitive
+    trim: true
   },
   description: {
     type: String,
@@ -18,10 +17,17 @@ const categorySchema = new mongoose.Schema({
   versionKey: false
 });
 
-// Eliminar índices existentes primero
+// Eliminar índice problemático si existe
 categorySchema.pre('save', async function(next) {
   try {
-    await this.constructor.collection.dropIndex('name_1');
+    const collection = this.constructor.collection;
+    const indexes = await collection.indexes();
+    
+    // Buscar y eliminar índice problemático con nombre "nombre_1"
+    const problematicIndex = indexes.find(index => index.name === 'nombre_1');
+    if (problematicIndex) {
+      await collection.dropIndex('nombre_1');
+    }
   } catch (err) {
     // Ignorar si el índice no existe
     if (!err.message.includes('index not found')) {
@@ -31,10 +37,10 @@ categorySchema.pre('save', async function(next) {
   next();
 });
 
-// Crear nuevo índice con collation para case-insensitive
+// Crear nuevo índice correcto
 categorySchema.index({ name: 1 }, { 
   unique: true,
-  collation: { locale: 'es', strength: 2 } // strength 2 = case-insensitive
+  name: 'name_1' // Nombre explícito para el índice
 });
 
 module.exports = mongoose.model('Category', categorySchema);
