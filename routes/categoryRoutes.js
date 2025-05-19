@@ -1,13 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const { verifyToken, isAdmin } = require('../middlewares/authJwt');
 const categoryController = require('../controllers/categoryController');
+const { check } = require('express-validator');
 
-// CRUD Categorías
-router.post('/', [verifyToken, isAdmin], categoryController.create);
-router.get('/', verifyToken, categoryController.getAll);
-router.get('/:id', verifyToken, categoryController.getById);
-router.put('/:id', [verifyToken, isAdmin], categoryController.update);
-router.delete('/:id', [verifyToken, isAdmin], categoryController.delete);
+const validateCategory = [
+  check('name').not().isEmpty().trim().withMessage('El nombre es obligatorio'),
+  check('description').not().isEmpty().trim().withMessage('La descripción es obligatoria')
+];
+
+router.post('/', validateCategory, categoryController.createCategory);
+router.get('/', categoryController.getCategories);
+router.get('/:id', categoryController.getCategoryById);
+router.put('/:id', validateCategory, categoryController.updateCategory);
+router.delete('/:id', categoryController.deleteCategory);
 
 module.exports = router;
