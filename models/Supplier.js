@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const SupplierSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -10,13 +10,13 @@ const SupplierSchema = new mongoose.Schema({
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" }
 }, { timestamps: true });
 
-// Manejo de errores de duplicados
-supplierSchema.post('save', function(error, doc, next) {
+// Middleware para manejar errores de duplicados (corregido: usa SupplierSchema)
+SupplierSchema.post('save', function(error, doc, next) {
   if (error.name === 'MongoServerError' && error.code === 11000) {
-    next(new Error('El nombre o email ya están registrados'));
+    next(new Error('El correo ya está registrado'));
   } else {
     next(error);
   }
 });
 
-module.exports = mongoose.model('Supplier', supplierSchema);
+module.exports = mongoose.model("Supplier", SupplierSchema);
