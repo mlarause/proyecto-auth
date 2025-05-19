@@ -4,25 +4,23 @@ const supplierController = require('../controllers/supplierController');
 const { authenticate, authorize } = require('../middlewares/auth');
 const { check } = require('express-validator');
 
-// Validaciones
 const validateSupplier = [
   check('name').not().isEmpty().withMessage('El nombre es obligatorio'),
   check('contact').not().isEmpty().withMessage('El contacto es obligatorio'),
   check('email').isEmail().withMessage('Email inválido'),
-  check('products').isArray({ min: 1 }).withMessage('Debe tener al menos un producto'),
-  check('products.*').isMongoId().withMessage('IDs de producto inválidos')
+  check('products').isArray({ min: 1 }).withMessage('Debe asociar al menos un producto'),
+  check('products.*').isMongoId().withMessage('ID de producto inválido')
 ];
 
-// Middlewares de autenticación para todas las rutas
+// Aplicar autenticación a todas las rutas
 router.use(authenticate);
-router.use(authorize('admin'));
 
 // Rutas
-router.post('/', validateSupplier, supplierController.createSupplier);
-router.get('/', supplierController.getSuppliers);
-router.get('/:id', supplierController.getSupplierById);
-router.put('/:id', validateSupplier, supplierController.updateSupplier);
-router.delete('/:id', supplierController.deleteSupplier);
-router.get('/product/:productId', supplierController.getSuppliersByProduct);
+router.post('/', authorize(['admin', 'manager']), validateSupplier, supplierController.createSupplier);
+router.get('/', authorize(['admin', 'manager', 'user']), supplierController.getSuppliers);
+router.get('/:id', authorize(['admin', 'manager', 'user']), supplierController.getSupplierById);
+router.put('/:id', authorize(['admin', 'manager']), validateSupplier, supplierController.updateSupplier);
+router.delete('/:id', authorize(['admin']), supplierController.deleteSupplier);
+router.get('/product/:productId', authorize(['admin', 'manager', 'user']), supplierController.getSuppliersByProduct);
 
 module.exports = router;
