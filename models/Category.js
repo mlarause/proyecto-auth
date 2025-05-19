@@ -6,7 +6,7 @@ const categorySchema = new mongoose.Schema({
     required: [true, 'El nombre es obligatorio'],
     unique: true,
     trim: true,
-    index: true
+    lowercase: true // Convertir a minúsculas para evitar duplicados case-sensitive
   },
   description: {
     type: String,
@@ -18,19 +18,23 @@ const categorySchema = new mongoose.Schema({
   versionKey: false
 });
 
-// Manejo mejorado de errores de duplicados
-categorySchema.post('save', function(error, doc, next) {
-  if (error.name === 'MongoServerError' && error.code === 11000) {
-    next(new Error('Ya existe una categoría con ese nombre'));
-  } else {
-    next(error);
+// Eliminar índices existentes primero
+categorySchema.pre('save', async function(next) {
+  try {
+    await this.constructor.collection.dropIndex('name_1');
+  } catch (err) {
+    // Ignorar si el índice no existe
+    if (!err.message.includes('index not found')) {
+      return next(err);
+    }
   }
+  next();
 });
 
-// Eliminar índice duplicado si existe
+// Crear nuevo índice con collation para case-insensitive
 categorySchema.index({ name: 1 }, { 
   unique: true,
-  partialFilterExpression: { name: { $exists: true, $type: 'string' } }
+  collation: { locale: 'es', strength: 2 } // strength 2 = case-insensitive
 });
 
 module.exports = mongoose.model('Category', categorySchema);
