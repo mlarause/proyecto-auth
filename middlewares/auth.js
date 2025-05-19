@@ -2,14 +2,17 @@ const jwt = require('jsonwebtoken');
 const { TOKEN_SECRET } = require('../config/auth.config');
 const User = require('../models/User');
 
-// 1. Función para verificar token (existente)
+// 1. Verificación de Token (mejorada)
 const verifyToken = (req, res, next) => {
-  const token = req.headers['x-access-token'] || req.cookies.token;
+  // Buscar token en: 1) Headers, 2) Cookies, 3) Query params
+  const token = req.headers['x-access-token'] || 
+               req.headers['authorization']?.split(' ')[1] || 
+               req.cookies?.token;
 
   if (!token) {
     return res.status(403).json({
       success: false,
-      message: 'No se proporcionó token'
+      message: 'Token de autenticación no proporcionado'
     });
   }
 
@@ -27,11 +30,10 @@ const verifyToken = (req, res, next) => {
   });
 };
 
-// 2. Función para verificar rol de administrador (existente)
+// 2. Función isAdmin (original)
 const isAdmin = async (req, res, next) => {
   try {
     const user = await User.findById(req.userId);
-    
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -55,11 +57,10 @@ const isAdmin = async (req, res, next) => {
   }
 };
 
-// 3. Función para verificar rol de coordinador (existente)
+// 3. Función isCoordinador (original)
 const isCoordinador = async (req, res, next) => {
   try {
     const user = await User.findById(req.userId);
-    
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -83,11 +84,10 @@ const isCoordinador = async (req, res, next) => {
   }
 };
 
-// 4. Función para verificar rol de auxiliar (existente)
+// 4. Función isAuxiliar (original)
 const isAuxiliar = async (req, res, next) => {
   try {
     const user = await User.findById(req.userId);
-    
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -111,7 +111,7 @@ const isAuxiliar = async (req, res, next) => {
   }
 };
 
-// 5. Middleware para validación de roles dinámicos (nuevo - compatible)
+// 5. Función checkRole (nueva - compatible con las existentes)
 const checkRole = (allowedRoles = []) => {
   return async (req, res, next) => {
     try {
@@ -129,7 +129,7 @@ const checkRole = (allowedRoles = []) => {
       } else {
         return res.status(403).json({
           success: false,
-          message: `Rol no autorizado. Se requiere: ${allowedRoles.join(', ')}`
+          message: `Acceso denegado. Rol requerido: ${allowedRoles.join(', ')}`
         });
       }
     } catch (error) {
