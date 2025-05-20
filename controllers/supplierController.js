@@ -1,136 +1,235 @@
 const db = require("../models");
 const Supplier = db.supplier;
-// Eliminamos la dependencia de Op ya que no es estrictamente necesaria
+const Product = db.product;
+const { Op } = require("sequelize");
 
-// Crear y guardar un nuevo proveedor
-exports.create = (req, res) => {
+// Crear y guardar un nuevo proveedor (solo admin)
+exports.create = async (req, res) => {
+    // Validar solicitud
     if (!req.body.name) {
-        return res.status(400).send({
+        return res.status(400).json({
             success: false,
-            message: "El nombre del proveedor no puede estar vacío"
+            message: "El nombre del proveedor es requerido"
         });
     }
 
-    const supplier = {
-        name: req.body.name,
-        contact: req.body.contact,
-        email: req.body.email,
-        phone: req.body.phone,
-        address: req.body.address,
-        status: req.body.status ? req.body.status : true
-    };
+    try {
+        // Crear objeto proveedor
+        const supplier = {
+            name: req.body.name,
+            contact: req.body.contact || null,
+            email: req.body.email || null,
+            phone: req.body.phone || null,
+            address: req.body.address || null,
+            status: req.body.status !== undefined ? req.body.status : true
+        };
 
-    Supplier.create(supplier)
-        .then(data => {
-            res.send({
+        // Crear proveedor en la base de datos
+        const createdSupplier = await Supplier.create(supplier);
+
+        // Asociar productos si se proporcionaron
+        if (req.body.products && Array.isArray(req.body.products)) {
+            const products = await Product.findAll({
+                where: {
+                    id: {
+                        [Op.in]: req.body.products
+                    }
+                }
+            });
+            
+            await createdSupplier.setProducts(products);
+        }
+
+        res.status(201).json({
+            success: true,
+            message: "Proveedor creado exitosamente",
+            data: createdSupplier
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message || "Error al crear el proveedor"
+        });
+    }
+};
+
+// Obtener todos los proveedores
+exports.findAll = async (req, res) => {
+    try {
+        const { name, status } = req.query;
+        let condition = {};
+
+        if (name) {
+            condition.name = { [Op.like]: `%${name}%` };
+        }
+
+        if (status !== undefined) {
+            condition.status = status === 'true';
+        }
+
+        const suppliers = await Supplier.findAll({
+            where: condition,
+            include: [{
+                model: Product,
+                attributes: ['id', 'name']
+            }]
+        });
+
+        res.json({
+            success: true,
+            data: suppliers
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message || "Error al obtener los proveedores"
+        });
+    }
+};
+
+// Obtener un proveedor por ID
+exports.findOne = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const supplier = await Supplier.findByPk(id, {
+            include: [{
+                model: Product,
+                attributes: ['id', 'name']
+            }]
+        });
+
+        if (!supplier) {
+            return res.status(404).json({
+                success: false,
+                message: `Proveedor con id=${id} no encontrado`
+            });
+        }
+
+        res.json({
+            success: true,
+            data: supplier
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message || `Error al obtener el proveedor con id=${id}`
+        });
+    }
+};
+
+// Actualizar un proveedor por ID (solo admin)
+exports.update = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const [num] = await Supplier.update(req.body, {
+            where: { id }
+        });
+
+        if (num === 1) {
+            // Si se proporcionaron productos, actualizar la relación
+            if (req.body.products && Array.isArray(req.body.products)) {
+                const supplier = await Supplier.findByPk(id);
+                const products = await Product.findAll({
+                    where: {
+                        id: {
+                            [Op.in]: req.body.products
+                        }
+                    }
+                });
+                
+                await supplier.setProducts(products);
+            }
+
+            res.json({
                 success: true,
-                message: "Proveedor creado exitosamente",
-                data: data
+                message: "Proveedor actualizado exitosamente"
             });
-        })
-        .catch(err => {
-            res.status(500).send({
+        } else {
+            res.status(404).json({
                 success: false,
-                message: err.message || "Ocurrió un error al crear el proveedor"
+                message: `No se pudo actualizar el proveedor con id=${id}. Puede que no exista`
             });
+        }
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message || `Error al actualizar el proveedor con id=${id}`
         });
+    }
 };
 
-// Obtener todos los proveedores (versión simplificada sin búsqueda)
-exports.findAll = (req, res) => {
-    Supplier.findAll()
-        .then(data => {
-            res.send({
+// Eliminar un proveedor por ID (solo admin)
+exports.delete = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const num = await Supplier.destroy({
+            where: { id }
+        });
+
+        if (num === 1) {
+            res.json({
                 success: true,
-                data: data
+                message: "Proveedor eliminado exitosamente"
             });
-        })
-        .catch(err => {
-            res.status(500).send({
+        } else {
+            res.status(404).json({
                 success: false,
-                message: err.message || "Ocurrió un error al recuperar los proveedores"
+                message: `No se pudo eliminar el proveedor con id=${id}. Puede que no exista`
             });
+        }
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message || `Error al eliminar el proveedor con id=${id}`
         });
+    }
 };
 
-// Resto de los métodos se mantienen igual que antes (findOne, update, delete, etc.)
-// ...
-
-exports.findOne = (req, res) => {
-    const id = req.params.id;
-
-    Supplier.findByPk(id)
-        .then(data => {
-            if (data) {
-                res.send({
-                    success: true,
-                    data: data
-                });
-            } else {
-                res.status(404).send({
-                    success: false,
-                    message: `No se encontró el proveedor con id=${id}`
-                });
-            }
-        })
-        .catch(err => {
-            res.status(500).send({
-                success: false,
-                message: "Error al recuperar el proveedor con id=" + id
-            });
+// Eliminar todos los proveedores (solo admin)
+exports.deleteAll = async (req, res) => {
+    try {
+        const num = await Supplier.destroy({
+            where: {},
+            truncate: false
         });
+
+        res.json({
+            success: true,
+            message: `${num} proveedores eliminados exitosamente`
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message || "Error al eliminar todos los proveedores"
+        });
+    }
 };
 
-exports.update = (req, res) => {
-    const id = req.params.id;
-
-    Supplier.update(req.body, {
-        where: { id: id }
-    })
-        .then(num => {
-            if (num == 1) {
-                res.send({
-                    success: true,
-                    message: "Proveedor actualizado exitosamente"
-                });
-            } else {
-                res.status(404).send({
-                    success: false,
-                    message: `No se pudo actualizar el proveedor con id=${id}`
-                });
-            }
-        })
-        .catch(err => {
-            res.status(500).send({
-                success: false,
-                message: "Error al actualizar el proveedor con id=" + id
-            });
+// Obtener todos los proveedores activos
+exports.findAllActive = async (req, res) => {
+    try {
+        const suppliers = await Supplier.findAll({
+            where: { status: true },
+            include: [{
+                model: Product,
+                attributes: ['id', 'name']
+            }]
         });
-};
 
-exports.delete = (req, res) => {
-    const id = req.params.id;
-
-    Supplier.destroy({
-        where: { id: id }
-    })
-        .then(num => {
-            if (num == 1) {
-                res.send({
-                    success: true,
-                    message: "Proveedor eliminado exitosamente"
-                });
-            } else {
-                res.status(404).send({
-                    success: false,
-                    message: `No se pudo eliminar el proveedor con id=${id}`
-                });
-            }
-        })
-        .catch(err => {
-            res.status(500).send({
-                success: false,
-                message: "No se pudo eliminar el proveedor con id=" + id
-            });
+        res.json({
+            success: true,
+            data: suppliers
         });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message || "Error al obtener los proveedores activos"
+        });
+    }
 };
