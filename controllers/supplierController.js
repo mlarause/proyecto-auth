@@ -4,50 +4,60 @@ const Product = db.product;
 // Eliminamos la dependencia de Op ya que no es estrictamente necesaria
 
 // Crear y guardar un nuevo proveedor
-exports.create = (req, res) => {
-  if (!req.body.name) {
-    return res.status(400).send({
-      success: false,
-      message: "El nombre no puede estar vacío"
-    });
-  }
-
-  Supplier.create({
-    name: req.body.name,
-    contact: req.body.contact,
-    email: req.body.email,
-    phone: req.body.phone,
-    address: req.body.address
-  })
-  .then(supplier => {
-    if (req.body.products) {
-      Product.findAll({
-        where: {
-          id: req.body.products
+exports.create = async (req, res) => {
+    try {
+        if (!req.body.name) {
+            return res.status(400).json({
+                success: false,
+                message: "El nombre del proveedor es requerido"
+            });
         }
-      }).then(products => {
-        supplier.setProducts(products).then(() => {
-          res.send({
+
+        // Convertir products a array si viene como string
+        const products = Array.isArray(req.body.products) ? 
+            req.body.products : 
+            [req.body.products].filter(Boolean);
+
+        // Validar productos
+        if (products.length > 0) {
+            const productsExist = await Product.count({
+                where: { id: products }
+            });
+            
+            if (productsExist !== products.length) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Algunos productos no existen"
+                });
+            }
+        }
+
+        // Crear proveedor
+        const supplier = await Supplier.create({
+            name: req.body.name,
+            contact: req.body.contact,
+            email: req.body.email,
+            phone: req.body.phone,
+            address: req.body.address
+        });
+
+        // Asociar productos
+        if (products.length > 0) {
+            await supplier.setProducts(products);
+        }
+
+        res.status(201).json({
             success: true,
             message: "Proveedor creado exitosamente",
             data: supplier
-          });
         });
-      });
-    } else {
-      res.send({
-        success: true,
-        message: "Proveedor creado exitosamente",
-        data: supplier
-      });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message || "Error al crear el proveedor"
+        });
     }
-  })
-  .catch(err => {
-    res.status(500).send({
-      success: false,
-      message: err.message || "Error al crear el proveedor"
-    });
-  });
 };
 
 exports.findAll = (req, res) => {

@@ -1,69 +1,68 @@
 const jwt = require("jsonwebtoken");
 const config = require("../config/auth.config");
-const db = require("../models");
-const User = db.user;
 
-verifyToken = (req, res, next) => {
-  let token = req.headers["x-access-token"];
-
-  if (!token) {
-    return res.status(403).send({
-      success: false,
-      message: "No se proporcionó token"
-    });
-  }
-
-  jwt.verify(token, config.secret, (err, decoded) => {
-    if (err) {
-      return res.status(401).send({
-        success: false,
-        message: "No autorizado"
-      });
+exports.verifyToken = (req, res, next) => {
+    // Aceptar token en Authorization header (Bearer) o x-access-token
+    const token = req.headers['authorization']?.split(' ')[1] || req.headers['x-access-token'];
+    
+    if (!token) {
+        return res.status(403).json({ 
+            success: false,
+            message: "Token de autenticación no proporcionado" 
+        });
     }
-    req.userId = decoded.id;
-    next();
-  });
-};
 
-isAdmin = (req, res, next) => {
-  User.findByPk(req.userId).then(user => {
-    user.getRoles().then(roles => {
-      for (let i = 0; i < roles.length; i++) {
-        if (roles[i].name === "admin") {
-          next();
-          return;
+    jwt.verify(token, config.secret, (err, decoded) => {
+        if (err) {
+            return res.status(401).json({ 
+                success: false,
+                message: "Token inválido o expirado" 
+            });
         }
-      }
-
-      res.status(403).send({
-        success: false,
-        message: "Se requiere rol de administrador"
-      });
+        
+        req.userId = decoded.id;
+        next();
     });
-  });
 };
 
-isCoordinator = (req, res, next) => {
-  User.findByPk(req.userId).then(user => {
-    user.getRoles().then(roles => {
-      for (let i = 0; i < roles.length; i++) {
-        if (roles[i].name === "coordinator") {
-          next();
-          return;
-        }
-      }
+exports.isAdmin = async (req, res, next) => {
+    try {
+        const user = await db.User.findByPk(req.userId, {
+            include: [db.Role]
+        });
 
-      res.status(403).send({
-        success: false,
-        message: "Se requiere rol de coordinador"
-      });
-    });
-  });
+        const isAdmin = user.Roles.some(role => role.name === 'admin');
+        if (isAdmin) return next();
+        
+        res.status(403).json({
+            success: false,
+            message: "Se requiere rol de administrador"
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error al verificar roles"
+        });
+    }
 };
 
-const authJwt = {
-  verifyToken: verifyToken,
-  isAdmin: isAdmin,
-  isCoordinator: isCoordinator
+exports.isCoordinator = async (req, res, next) => {
+    try {
+        const user = await db.User.findByPk(req.userId, {
+            include: [db.Role]
+        });
+
+        const isCoordinator = user.Roles.some(role => role.name === 'coordinator');
+        if (isCoordinator) return next();
+        
+        res.status(403).json({
+            success: false,
+            message: "Se requiere rol de coordinador"
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Error al verificar roles"
+        });
+    }
 };
-module.exports = authJwt;

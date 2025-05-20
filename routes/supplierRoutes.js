@@ -1,16 +1,21 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const supplierController = require("../controllers/supplierController");
-const authJwt = require("../middlewares/authJwt");
+const supplierController = require('../controllers/supplierController');
+const { verifyToken, isAdmin, isCoordinator } = require('../middlewares/authJwt');
+
+// Aplicar verifyToken a todas las rutas
+router.use(verifyToken);
 
 // Admin: CRUD completo
-router.post("/", [authJwt.verifyToken, authJwt.isAdmin], supplierController.create);
-router.get("/", authJwt.verifyToken, supplierController.findAll);
-router.get("/:id", authJwt.verifyToken, supplierController.findOne);
-router.put("/:id", [authJwt.verifyToken, authJwt.isAdmin], supplierController.update);
-router.delete("/:id", [authJwt.verifyToken, authJwt.isAdmin], supplierController.delete);
+router.post('/', isAdmin, supplierController.create);
+router.put('/:id', isAdmin, supplierController.update);
+router.delete('/:id', isAdmin, supplierController.delete);
 
-// Coordinador: Actualización parcial
-router.patch("/:id", [authJwt.verifyToken, authJwt.isCoordinator], supplierController.partialUpdate);
+// Coordinador: Actualización limitada
+router.patch('/:id', isCoordinator, supplierController.partialUpdate);
+
+// Todos autenticados: Consultas
+router.get('/', supplierController.findAll);
+router.get('/:id', supplierController.findOne);
 
 module.exports = router;
