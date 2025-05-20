@@ -14,37 +14,36 @@ exports.create = async (req, res) => {
             });
         }
 
-        // Validar productos asociados si existen
+        // Validar productos asociados
         if (req.body.products && req.body.products.length > 0) {
-            const productsExist = await Product.findAll({
+            const productsCount = await Product.count({
                 where: { id: { [Op.in]: req.body.products } }
             });
             
-            if (productsExist.length !== req.body.products.length) {
+            if (productsCount !== req.body.products.length) {
                 return res.status(400).json({
                     success: false,
-                    message: "Algunos productos no existen en la base de datos"
+                    message: "Algunos productos no existen"
                 });
             }
         }
 
-        // Crear el proveedor
-        const newSupplier = await Supplier.create({
+        // Crear proveedor
+        const supplier = await Supplier.create({
             name: req.body.name,
-            contact: req.body.contact || null,
-            email: req.body.email || null,
-            phone: req.body.phone || null,
-            address: req.body.address || null,
-            status: req.body.status !== undefined ? req.body.status : true
+            contact: req.body.contact,
+            email: req.body.email,
+            phone: req.body.phone,
+            address: req.body.address
         });
 
-        // Asociar productos si se proporcionaron
+        // Asociar productos
         if (req.body.products && req.body.products.length > 0) {
-            await newSupplier.setProducts(req.body.products);
+            await supplier.setProducts(req.body.products);
         }
 
-        // Obtener el proveedor con sus productos para la respuesta
-        const supplierWithProducts = await Supplier.findByPk(newSupplier.id, {
+        // Obtener proveedor con productos para la respuesta
+        const supplierWithProducts = await Supplier.findByPk(supplier.id, {
             include: [{
                 model: Product,
                 attributes: ['id', 'name'],
