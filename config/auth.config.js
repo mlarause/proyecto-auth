@@ -1,4 +1,5 @@
 module.exports = {
-  secret: process.env.JWT_SECRET || "tusecretoparalostokens",
-  expiresIn: "24h" // 24 horas en segundos
+  secret: "tusecretoparalostokens",
+  jwtExpiration: 3600,          // 1 hora
+  jwtRefreshExpiration: 86400,   // 24 horas
 };
