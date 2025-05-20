@@ -1,166 +1,79 @@
-const jwt = require("jsonwebtoken");
-const config = require("../config/auth.config");
-const db = require("../models");
-const User = db.user;
+const jwt = require('jsonwebtoken');
+const config = require('../config/auth.config');
+const User = require('../models/User');
 
-// Middleware para verificar token JWT
-verifyToken = (req, res, next) => {
-    // Obtener token de headers (compatible con Authorization y x-access-token)
-    let token = req.headers["authorization"] || req.headers["x-access-token"];
+// 1. Función verifyToken (idéntica a la implementación en categorías)
+const verifyToken = async (req, res, next) => {
+  const token = req.headers['x-access-token'] || 
+               req.headers['authorization']?.split(' ')[1] || 
+               req.cookies?.token;
+
+  if (!token) {
+    return res.status(403).json({
+      success: false,
+      message: 'Token no proporcionado'
+    });
+  }
+
+  try {
+    const decoded = jwt.verify(token, config.secret);
+    const user = await User.findById(decoded.id);
     
-    if (!token) {
-        return res.status(403).send({
-            success: false,
-            message: "No se proporcionó token de autenticación"
-        });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
     }
 
-    // Eliminar 'Bearer ' si está presente
-    if (token.startsWith("Bearer ")) {
-        token = token.slice(7, token.length);
+    req.user = user; // Adjuntamos el usuario completo al request
+    req.userId = user._id;
+    req.userRole = user.role; // Tomamos el rol directamente de la BD
+    next();
+  } catch (error) {
+    console.error('Error al verificar token:', error.message);
+    return res.status(401).json({
+      success: false,
+      message: 'Token inválido o expirado'
+    });
+  }
+};
+
+// 2. Middleware isCoordinador (actualizado según tu estructura)
+const isCoordinador = async (req, res, next) => {
+  try {
+    // Ya tenemos el usuario en req.user gracias a verifyToken
+    if (['admin', 'coordinador'].includes(req.user.role)) {
+      next();
+    } else {
+      return res.status(403).json({
+        success: false,
+        message: 'Se requiere rol coordinador o admin'
+      });
     }
-
-    // Verificar token
-    jwt.verify(token, config.secret, (err, decoded) => {
-        if (err) {
-            // Manejo específico de errores
-            if (err.name === "TokenExpiredError") {
-                return res.status(401).send({
-                    success: false,
-                    message: "Token expirado, por favor inicie sesión nuevamente"
-                });
-            }
-            return res.status(401).send({
-                success: false,
-                message: "Token inválido"
-            });
-        }
-        
-        // Token válido, agregar userId al request
-        req.userId = decoded.id;
-        next();
+  } catch (error) {
+    console.error('Error en isCoordinador:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error al verificar rol'
     });
+  }
 };
 
-// Middleware para verificar rol de administrador
-isAdmin = (req, res, next) => {
-    User.findByPk(req.userId).then(user => {
-        if (!user) {
-            return res.status(404).send({
-                success: false,
-                message: "Usuario no encontrado"
-            });
-        }
-
-        user.getRoles().then(roles => {
-            for (let i = 0; i < roles.length; i++) {
-                if (roles[i].name === "admin") {
-                    next();
-                    return;
-                }
-            }
-
-            res.status(403).send({
-                success: false,
-                message: "Se requiere rol de administrador"
-            });
-        }).catch(err => {
-            res.status(500).send({
-                success: false,
-                message: "Error al verificar roles del usuario"
-            });
-        });
-    }).catch(err => {
-        res.status(500).send({
-            success: false,
-            message: "Error al buscar usuario"
-        });
+// 3. Middleware isAdmin (manteniendo compatibilidad)
+const isAdmin = async (req, res, next) => {
+  if (req.user.role === 'admin') {
+    next();
+  } else {
+    return res.status(403).json({ 
+      success: false, 
+      message: 'Se requiere rol admin' 
     });
+  }
 };
 
-// Middleware para verificar rol de moderador
-isModerator = (req, res, next) => {
-    User.findByPk(req.userId).then(user => {
-        if (!user) {
-            return res.status(404).send({
-                success: false,
-                message: "Usuario no encontrado"
-            });
-        }
-
-        user.getRoles().then(roles => {
-            for (let i = 0; i < roles.length; i++) {
-                if (roles[i].name === "moderator") {
-                    next();
-                    return;
-                }
-            }
-
-            res.status(403).send({
-                success: false,
-                message: "Se requiere rol de moderador"
-            });
-        }).catch(err => {
-            res.status(500).send({
-                success: false,
-                message: "Error al verificar roles del usuario"
-            });
-        });
-    }).catch(err => {
-        res.status(500).send({
-            success: false,
-            message: "Error al buscar usuario"
-        });
-    });
+module.exports = {
+  verifyToken,
+  isAdmin,
+  isCoordinador
 };
-
-// Middleware para verificar rol de moderador o administrador
-isModeratorOrAdmin = (req, res, next) => {
-    User.findByPk(req.userId).then(user => {
-        if (!user) {
-            return res.status(404).send({
-                success: false,
-                message: "Usuario no encontrado"
-            });
-        }
-
-        user.getRoles().then(roles => {
-            for (let i = 0; i < roles.length; i++) {
-                if (roles[i].name === "moderator") {
-                    next();
-                    return;
-                }
-
-                if (roles[i].name === "admin") {
-                    next();
-                    return;
-                }
-            }
-
-            res.status(403).send({
-                success: false,
-                message: "Se requiere rol de administrador o moderador"
-            });
-        }).catch(err => {
-            res.status(500).send({
-                success: false,
-                message: "Error al verificar roles del usuario"
-            });
-        });
-    }).catch(err => {
-        res.status(500).send({
-            success: false,
-            message: "Error al buscar usuario"
-        });
-    });
-};
-
-// Exportar middlewares
-const authJwt = {
-    verifyToken: verifyToken,
-    isAdmin: isAdmin,
-    isModerator: isModerator,
-    isModeratorOrAdmin: isModeratorOrAdmin
-};
-
-module.exports = authJwt;
