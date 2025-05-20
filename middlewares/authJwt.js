@@ -1,14 +1,16 @@
 const jwt = require("jsonwebtoken");
 const config = require("../config/auth.config");
+const db = require("../models");
+const User = db.user;
 
 exports.verifyToken = (req, res, next) => {
-    // Aceptar token en Authorization header (Bearer) o x-access-token
-    const token = req.headers['authorization']?.split(' ')[1] || req.headers['x-access-token'];
+    const token = req.headers['authorization']?.split(' ')[1] || 
+                 req.headers['x-access-token'];
     
     if (!token) {
         return res.status(403).json({ 
             success: false,
-            message: "Token de autenticación no proporcionado" 
+            message: "Token no proporcionado" 
         });
     }
 
@@ -16,7 +18,8 @@ exports.verifyToken = (req, res, next) => {
         if (err) {
             return res.status(401).json({ 
                 success: false,
-                message: "Token inválido o expirado" 
+                message: "Token inválido o expirado",
+                error: err.message 
             });
         }
         
@@ -27,7 +30,7 @@ exports.verifyToken = (req, res, next) => {
 
 exports.isAdmin = async (req, res, next) => {
     try {
-        const user = await db.User.findByPk(req.userId, {
+        const user = await User.findByPk(req.userId, {
             include: [db.Role]
         });
 
@@ -48,7 +51,7 @@ exports.isAdmin = async (req, res, next) => {
 
 exports.isCoordinator = async (req, res, next) => {
     try {
-        const user = await db.User.findByPk(req.userId, {
+        const user = await User.findByPk(req.userId, {
             include: [db.Role]
         });
 
