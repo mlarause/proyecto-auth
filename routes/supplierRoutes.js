@@ -3,6 +3,12 @@ const router = express.Router();
 const supplierController = require('../controllers/supplierController');
 const { verifyToken, isAdmin, isCoordinator } = require('../middlewares/authJwt');
 
+// Middleware de diagnóstico para rutas
+router.use((req, res, next) => {
+    console.log(`[RUTA] ${req.method} ${req.originalUrl}`);
+    next();
+});
+
 // Admin: CRUD completo
 router.post('/', [verifyToken, isAdmin], supplierController.create);
 router.put('/:id', [verifyToken, isAdmin], supplierController.update);
