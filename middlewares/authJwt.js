@@ -1,53 +1,69 @@
-const jwt = require('jsonwebtoken');
-const config = require('../config/auth.config');
-const db = require('../models');
+const jwt = require("jsonwebtoken");
+const config = require("../config/auth.config");
+const db = require("../models");
 const User = db.user;
 
-const verifyToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Extraer token de Bearer
-    
-    if (!token) {
-        return res.status(403).json({ 
-            success: false,
-            message: "Token no proporcionado" 
-        });
-    }
+verifyToken = (req, res, next) => {
+  let token = req.headers["x-access-token"];
 
-    jwt.verify(token, config.secret, (err, user) => {
-        if (err) {
-            return res.status(401).json({ 
-                success: false,
-                message: "Token inválido o expirado" 
-            });
-        }
-        req.user = user;
-        next();
+  if (!token) {
+    return res.status(403).send({
+      success: false,
+      message: "No se proporcionó token"
     });
-};
+  }
 
-const isAdmin = async (req, res, next) => {
-    try {
-        const user = await User.findByPk(req.user.id);
-        const roles = await user.getRoles();
-        
-        if (roles.some(role => role.name === 'admin')) {
-            return next();
-        }
-        
-        res.status(403).json({
-            success: false,
-            message: "Se requiere rol de administrador"
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Error al verificar roles"
-        });
+  jwt.verify(token, config.secret, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({
+        success: false,
+        message: "No autorizado"
+      });
     }
+    req.userId = decoded.id;
+    next();
+  });
 };
 
-module.exports = {
-    verifyToken,
-    isAdmin
+isAdmin = (req, res, next) => {
+  User.findByPk(req.userId).then(user => {
+    user.getRoles().then(roles => {
+      for (let i = 0; i < roles.length; i++) {
+        if (roles[i].name === "admin") {
+          next();
+          return;
+        }
+      }
+
+      res.status(403).send({
+        success: false,
+        message: "Se requiere rol de administrador"
+      });
+    });
+  });
 };
+
+isCoordinator = (req, res, next) => {
+  User.findByPk(req.userId).then(user => {
+    user.getRoles().then(roles => {
+      for (let i = 0; i < roles.length; i++) {
+        if (roles[i].name === "coordinator") {
+          next();
+          return;
+        }
+      }
+
+      res.status(403).send({
+        success: false,
+        message: "Se requiere rol de coordinador"
+      });
+    });
+  });
+};
+
+const authJwt = {
+  verifyToken: verifyToken,
+  isAdmin: isAdmin,
+  isCoordinator: isCoordinator
+};
+module.exports = authJwt;
