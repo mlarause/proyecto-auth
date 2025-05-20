@@ -6,7 +6,7 @@ const { verifyToken, isAdmin, isCoordinador } = require('../middlewares/auth');
 // CREATE - Admin y Coordinador (igual que en categorías)
 router.post('/',
   verifyToken,
-  isCoordinador,
+  isCoordinador, // Solo coordinadores y admins
   supplierController.createSupplier
 );
 
