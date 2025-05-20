@@ -1,70 +1,102 @@
-const jwt = require('jsonwebtoken');
-const config = require('../config/auth.config');
-const User = require('../models/User');
+const jwt = require("jsonwebtoken");
+const config = require("../config/auth.config.js");
+const db = require("../models");
+const User = db.user;
 
-// 1. Función verifyToken (idéntica a la implementación en categorías)
-const verifyToken = async (req, res, next) => {
-  const token = req.headers['x-access-token'] || 
-               req.headers['authorization']?.split(' ')[1] || 
-               req.cookies?.token;
+verifyToken = (req, res, next) => {
+  let token = req.headers["x-access-token"];
 
   if (!token) {
-    return res.status(403).json({
+    return res.status(403).send({
       success: false,
-      message: 'Token no proporcionado'
+      message: "No se proporcionó token de autenticación"
     });
   }
 
-  try {
-    const decoded = jwt.verify(token, config.secret);
-    const user = await User.findById(decoded.id);
-    
-    if (!user) {
-      return res.status(404).json({
+  jwt.verify(token, config.secret, (err, decoded) => {
+    if (err) {
+      if (err.name === "TokenExpiredError") {
+        return res.status(401).send({
+          success: false,
+          message: "Token expirado. Por favor inicie sesión nuevamente."
+        });
+      }
+      return res.status(401).send({
         success: false,
-        message: 'Usuario no encontrado'
+        message: "Token inválido"
       });
     }
-
-    req.user = user;
-    req.userId = user._id;
-    req.userRole = user.role;
+    
+    req.userId = decoded.id;
     next();
-  } catch (error) {
-    console.error('Error al verificar token:', error.message);
-    return res.status(401).json({
-      success: false,
-      message: 'Token inválido o expirado'
-    });
-  }
+  });
 };
 
-// 2. Middleware isAdmin (para CRUD completo)
-const isAdmin = (req, res, next) => {
-  if (req.user.role === 'admin') {
-    next();
-  } else {
-    return res.status(403).json({ 
-      success: false, 
-      message: 'Se requiere rol admin' 
+isAdmin = (req, res, next) => {
+  User.findByPk(req.userId).then(user => {
+    user.getRoles().then(roles => {
+      for (let i = 0; i < roles.length; i++) {
+        if (roles[i].name === "admin") {
+          next();
+          return;
+        }
+      }
+
+      res.status(403).send({
+        success: false,
+        message: "Se requiere rol de administrador"
+      });
+      return;
     });
-  }
+  });
 };
 
-// 3. Middleware isCoordinador (solo crear/consultar/modificar)
-const isCoordinador = (req, res, next) => {
-  if (['admin', 'coordinador'].includes(req.user.role)) {
-    next();
-  } else {
-    return res.status(403).json({
-      success: false,
-      message: 'Se requiere rol coordinador o admin'
+isModerator = (req, res, next) => {
+  User.findByPk(req.userId).then(user => {
+    user.getRoles().then(roles => {
+      for (let i = 0; i < roles.length; i++) {
+        if (roles[i].name === "moderator") {
+          next();
+          return;
+        }
+      }
+
+      res.status(403).send({
+        success: false,
+        message: "Se requiere rol de moderador"
+      });
     });
-  }
+  });
 };
 
-module.exports = {
-  verifyToken,
-  isAdmin,
-  isCoordinador
+isModeratorOrAdmin = (req, res, next) => {
+  User.findByPk(req.userId).then(user => {
+    user.getRoles().then(roles => {
+      for (let i = 0; i < roles.length; i++) {
+        if (roles[i].name === "moderator") {
+          next();
+          return;
+        }
+
+        if (roles[i].name === "admin") {
+          next();
+          return;
+        }
+      }
+
+      res.status(403).send({
+        success: false,
+        message: "Se requiere rol de administrador o moderador"
+      });
+    });
+  });
 };
+
+const authJwt = {
+  verifyToken: verifyToken,
+  isAdmin: isAdmin,
+  isModerator: isModerator,
+  isModeratorOrAdmin: isModeratorOrAdmin
+};
+
+module.exports = authJwt;
