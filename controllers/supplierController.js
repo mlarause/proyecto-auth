@@ -115,6 +115,60 @@ exports.findOne = (req, res) => {
         });
 };
 
+exports.partialUpdate = (req, res) => {
+  const id = req.params.id;
+
+  Supplier.findByPk(id)
+    .then(supplier => {
+      if (!supplier) {
+        return res.status(404).send({
+          success: false,
+          message: `No se encontró el proveedor con id=${id}`
+        });
+      }
+
+      // Campos permitidos para actualización parcial
+      const allowedFields = ['contact', 'email', 'phone', 'address'];
+      const updates = {};
+      
+      allowedFields.forEach(field => {
+        if (req.body[field] !== undefined) {
+          updates[field] = req.body[field];
+        }
+      });
+
+      // Actualizar solo los campos permitidos
+      Supplier.update(updates, {
+        where: { id: id }
+      })
+      .then(num => {
+        if (num == 1) {
+          res.send({
+            success: true,
+            message: "Proveedor actualizado parcialmente"
+          });
+        } else {
+          res.status(500).send({
+            success: false,
+            message: `No se pudo actualizar el proveedor con id=${id}`
+          });
+        }
+      })
+      .catch(err => {
+        res.status(500).send({
+          success: false,
+          message: `Error al actualizar el proveedor con id=${id}`
+        });
+      });
+    })
+    .catch(err => {
+      res.status(500).send({
+        success: false,
+        message: `Error al buscar el proveedor con id=${id}`
+      });
+    });
+};
+
 exports.update = (req, res) => {
     const id = req.params.id;
 
