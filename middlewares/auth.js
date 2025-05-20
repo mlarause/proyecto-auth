@@ -26,9 +26,9 @@ const verifyToken = async (req, res, next) => {
       });
     }
 
-    req.user = user; // Adjuntamos el usuario completo al request
+    req.user = user;
     req.userId = user._id;
-    req.userRole = user.role; // Tomamos el rol directamente de la BD
+    req.userRole = user.role;
     next();
   } catch (error) {
     console.error('Error al verificar token:', error.message);
@@ -39,35 +39,26 @@ const verifyToken = async (req, res, next) => {
   }
 };
 
-// 2. Middleware isCoordinador (actualizado según tu estructura)
-const isCoordinador = async (req, res, next) => {
-  try {
-    // Ya tenemos el usuario en req.user gracias a verifyToken
-    if (['admin', 'coordinador'].includes(req.user.role)) {
-      next();
-    } else {
-      return res.status(403).json({
-        success: false,
-        message: 'Se requiere rol coordinador o admin'
-      });
-    }
-  } catch (error) {
-    console.error('Error en isCoordinador:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Error al verificar rol'
-    });
-  }
-};
-
-// 3. Middleware isAdmin (manteniendo compatibilidad)
-const isAdmin = async (req, res, next) => {
+// 2. Middleware isAdmin (para CRUD completo)
+const isAdmin = (req, res, next) => {
   if (req.user.role === 'admin') {
     next();
   } else {
     return res.status(403).json({ 
       success: false, 
       message: 'Se requiere rol admin' 
+    });
+  }
+};
+
+// 3. Middleware isCoordinador (solo crear/consultar/modificar)
+const isCoordinador = (req, res, next) => {
+  if (['admin', 'coordinador'].includes(req.user.role)) {
+    next();
+  } else {
+    return res.status(403).json({
+      success: false,
+      message: 'Se requiere rol coordinador o admin'
     });
   }
 };
