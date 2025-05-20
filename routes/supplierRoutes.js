@@ -8,10 +8,10 @@ router.post('/', [verifyToken, isAdmin], supplierController.create);
 router.put('/:id', [verifyToken, isAdmin], supplierController.update);
 router.delete('/:id', [verifyToken, isAdmin], supplierController.delete);
 
-// Coordinador: Actualización parcial
+// Coordinador: Actualización limitada
 router.patch('/:id', [verifyToken, isCoordinator], supplierController.partialUpdate);
 
-// Todos autenticados: Consultas
+// Todos los usuarios autenticados: Consultas
 router.get('/', verifyToken, supplierController.findAll);
 router.get('/:id', verifyToken, supplierController.findOne);
 
