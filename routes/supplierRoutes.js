@@ -1,39 +1,21 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const supplierController = require('../controllers/supplierController');
-const { verifyToken, isAdmin, isCoordinador } = require('../middlewares/auth');
+const supplierController = require("../controllers/supplierController");
+const authJwt = require("../middlewares/authJwt");
 
-// CREATE - Admin y Coordinador (igual que en categorías)
-router.post('/',
-  verifyToken,
-  isCoordinador, // Solo coordinadores y admins
-  supplierController.createSupplier
-);
+// Ruta para crear proveedor (solo admin)
+router.post("/", [authJwt.verifyToken, authJwt.isAdmin], supplierController.create);
 
-// READ ALL - Todos autenticados
-router.get('/',
-  verifyToken,
-  supplierController.getAllSuppliers
-);
+// Ruta para obtener todos los proveedores (requiere autenticación)
+router.get("/", authJwt.verifyToken, supplierController.findAll);
 
-// READ ONE - Todos autenticados
-router.get('/:id',
-  verifyToken,
-  supplierController.getSupplierById
-);
+// Ruta para obtener un proveedor por ID (requiere autenticación)
+router.get("/:id", authJwt.verifyToken, supplierController.findOne);
 
-// UPDATE - Admin y Coordinador
-router.put('/:id',
-  verifyToken,
-  isCoordinador,
-  supplierController.updateSupplier
-);
+// Ruta para actualizar proveedor (solo admin)
+router.put("/:id", [authJwt.verifyToken, authJwt.isAdmin], supplierController.update);
 
-// DELETE - Solo Admin
-router.delete('/:id',
-  verifyToken,
-  isAdmin,
-  supplierController.deleteSupplier
-);
+// Ruta para eliminar proveedor (solo admin)
+router.delete("/:id", [authJwt.verifyToken, authJwt.isAdmin], supplierController.delete);
 
 module.exports = router;
