@@ -2,10 +2,85 @@ const db = require("../models");
 const Supplier = db.supplier;
 const Product = db.product;
 
-// Obtener todos los proveedores
-exports.getAllSuppliers = async (req, res) => {
+// Crear y guardar un nuevo proveedor
+exports.create = async (req, res) => {
     try {
-        const suppliers = await Supplier.findAll({
+        // Validación idéntica a productos
+        if (!req.body.name) {
+            return res.status(400).send({
+                success: false,
+                message: "El nombre del proveedor no puede estar vacío"
+            });
+        }
+
+        // Convertir products a array (igual que productos con subcategorías)
+        const productIds = req.body.products ? 
+            (Array.isArray(req.body.products) ? req.body.products : [req.body.products]) : 
+            [];
+
+        // Validar productos (igual que productos valida subcategorías)
+        if (productIds.length > 0) {
+            const productsCount = await Product.count({
+                where: { id: productIds }
+            });
+            
+            if (productsCount !== productIds.length) {
+                return res.status(400).send({
+                    success: false,
+                    message: "Algunos productos no existen"
+                });
+            }
+        }
+
+        // Crear proveedor (misma estructura que productos)
+        const supplier = await Supplier.create({
+            name: req.body.name,
+            contact: req.body.contact,
+            email: req.body.email,
+            phone: req.body.phone,
+            address: req.body.address,
+            status: req.body.status !== undefined ? req.body.status : true
+        });
+
+        // Establecer relación con productos (igual que productos-subcategorías)
+        if (productIds.length > 0) {
+            await supplier.setProducts(productIds);
+        }
+
+        // Obtener datos completos (igual que productos)
+        const result = await Supplier.findByPk(supplier.id, {
+            include: [{
+                model: Product,
+                attributes: ['id', 'name'],
+                through: { attributes: [] }
+            }]
+        });
+
+        res.status(201).send({
+            success: true,
+            message: "Proveedor creado exitosamente",
+            data: result
+        });
+
+    } catch (error) {
+        res.status(500).send({
+            success: false,
+            message: error.message || "Error al crear el proveedor"
+        });
+    }
+};
+
+// Obtener todos los proveedores (igual estructura que productos)
+exports.findAll = async (req, res) => {
+    try {
+        const { name, status } = req.query;
+        let condition = {};
+
+        if (name) condition.name = { [db.Sequelize.Op.like]: `%${name}%` };
+        if (status !== undefined) condition.status = status === 'true';
+
+        const data = await Supplier.findAll({
+            where: condition,
             include: [{
                 model: Product,
                 attributes: ['id', 'name'],
@@ -14,23 +89,26 @@ exports.getAllSuppliers = async (req, res) => {
             order: [['name', 'ASC']]
         });
 
-        res.json({
+        res.send({
             success: true,
-            count: suppliers.length,
-            data: suppliers
+            count: data.length,
+            data: data
         });
+
     } catch (error) {
-        res.status(500).json({
+        res.status(500).send({
             success: false,
             message: error.message || "Error al obtener los proveedores"
         });
     }
 };
 
-// Obtener un proveedor por ID
-exports.getSupplierById = async (req, res) => {
+// Obtener un proveedor por id (igual que productos)
+exports.findOne = async (req, res) => {
+    const id = req.params.id;
+
     try {
-        const supplier = await Supplier.findByPk(req.params.id, {
+        const data = await Supplier.findByPk(id, {
             include: [{
                 model: Product,
                 attributes: ['id', 'name'],
@@ -38,155 +116,115 @@ exports.getSupplierById = async (req, res) => {
             }]
         });
 
-        if (!supplier) {
-            return res.status(404).json({
+        if (!data) {
+            return res.status(404).send({
                 success: false,
-                message: `Proveedor con id=${req.params.id} no encontrado`
+                message: `Proveedor con id=${id} no encontrado`
             });
         }
 
-        res.json({
+        res.send({
             success: true,
-            data: supplier
+            data: data
         });
+
     } catch (error) {
-        res.status(500).json({
+        res.status(500).send({
             success: false,
-            message: error.message || `Error al obtener el proveedor con id=${req.params.id}`
+            message: `Error al obtener el proveedor con id=${id}`
         });
     }
 };
 
-// Crear nuevo proveedor
-exports.createSupplier = async (req, res) => {
+// Actualizar un proveedor (igual estructura que productos)
+exports.update = async (req, res) => {
+    const id = req.params.id;
+
     try {
-        // Validación
-        if (!req.body.name) {
-            return res.status(400).json({
-                success: false,
-                message: "El nombre del proveedor es requerido"
-            });
-        }
-
-        // Convertir products a array si es necesario
-        const productIds = req.body.products ? 
-            (Array.isArray(req.body.products) ? req.body.products : [req.body.products] ): 
-            [];
-
-        // Validar productos existentes
-        if (productIds.length > 0) {
+        // Validar productos si se proporcionan (igual que productos con subcategorías)
+        if (req.body.products) {
+            const productIds = Array.isArray(req.body.products) ? 
+                req.body.products : 
+                [req.body.products];
+                
             const productsCount = await Product.count({
                 where: { id: productIds }
             });
             
             if (productsCount !== productIds.length) {
-                return res.status(400).json({
+                return res.status(400).send({
                     success: false,
                     message: "Algunos productos no existen"
                 });
             }
         }
 
-        // Crear proveedor
-        const supplier = await Supplier.create({
-            name: req.body.name,
-            contact: req.body.contact,
-            email: req.body.email,
-            phone: req.body.phone,
-            address: req.body.address
+        const [num] = await Supplier.update(req.body, {
+            where: { id: id }
         });
 
-        // Asociar productos
-        if (productIds.length > 0) {
-            await supplier.setProducts(productIds);
-        }
-
-        res.status(201).json({
-            success: true,
-            message: "Proveedor creado exitosamente",
-            data: supplier
-        });
-
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message || "Error al crear el proveedor"
-        });
-    }
-};
-
-// Actualizar proveedor
-exports.updateSupplier = async (req, res) => {
-    try {
-        const [updated] = await Supplier.update(req.body, {
-            where: { id: req.params.id }
-        });
-
-        if (updated) {
-            // Si se enviaron productos, actualizar la relación
+        if (num == 1) {
+            // Actualizar relación con productos si se especificó (igual que productos)
             if (req.body.products) {
-                const supplier = await Supplier.findByPk(req.params.id);
+                const supplier = await Supplier.findByPk(id);
                 const productIds = Array.isArray(req.body.products) ? 
-                    req.body.products : [req.body.products];
+                    req.body.products : 
+                    [req.body.products];
                 await supplier.setProducts(productIds);
             }
 
-            const updatedSupplier = await Supplier.findByPk(req.params.id, {
-                include: [{
-                    model: Product,
-                    attributes: ['id', 'name'],
-                    through: { attributes: [] }
-                }]
-            });
-
-            return res.json({
+            res.send({
                 success: true,
-                message: "Proveedor actualizado exitosamente",
-                data: updatedSupplier
+                message: "Proveedor actualizado exitosamente"
+            });
+        } else {
+            res.status(404).send({
+                success: false,
+                message: `No se pudo actualizar el proveedor con id=${id}`
             });
         }
-
-        res.status(404).json({
-            success: false,
-            message: `No se encontró el proveedor con id=${req.params.id}`
-        });
     } catch (error) {
-        res.status(500).json({
+        res.status(500).send({
             success: false,
-            message: error.message || `Error al actualizar el proveedor con id=${req.params.id}`
+            message: `Error al actualizar el proveedor con id=${id}`
         });
     }
 };
 
-// Eliminar proveedor
-exports.deleteSupplier = async (req, res) => {
+// Eliminar un proveedor (igual que productos)
+exports.delete = async (req, res) => {
+    const id = req.params.id;
+
     try {
-        const deleted = await Supplier.destroy({
-            where: { id: req.params.id }
+        const num = await Supplier.destroy({
+            where: { id: id }
         });
 
-        if (deleted) {
-            return res.json({
+        if (num == 1) {
+            res.send({
                 success: true,
                 message: "Proveedor eliminado exitosamente"
             });
+        } else {
+            res.status(404).send({
+                success: false,
+                message: `No se pudo eliminar el proveedor con id=${id}`
+            });
         }
-
-        res.status(404).json({
-            success: false,
-            message: `No se encontró el proveedor con id=${req.params.id}`
-        });
     } catch (error) {
-        res.status(500).json({
+        res.status(500).send({
             success: false,
-            message: error.message || `Error al eliminar el proveedor con id=${req.params.id}`
+            message: `Error al eliminar el proveedor con id=${id}`
         });
     }
 };
 
-// Actualización parcial para coordinadores
-exports.partialUpdateSupplier = async (req, res) => {
+// Actualización parcial para coordinadores (nueva funcionalidad)
+exports.partialUpdate = async (req, res) => {
+    const id = req.params.id;
+
     try {
+        // Campos permitidos para coordinadores
         const allowedFields = ['contact', 'email', 'phone', 'address'];
         const updateData = {};
         
@@ -196,27 +234,25 @@ exports.partialUpdateSupplier = async (req, res) => {
             }
         });
 
-        const [updated] = await Supplier.update(updateData, {
-            where: { id: req.params.id }
+        const [num] = await Supplier.update(updateData, {
+            where: { id: id }
         });
 
-        if (updated) {
-            const updatedSupplier = await Supplier.findByPk(req.params.id);
-            return res.json({
+        if (num == 1) {
+            res.send({
                 success: true,
-                message: "Proveedor actualizado parcialmente",
-                data: updatedSupplier
+                message: "Proveedor actualizado parcialmente"
+            });
+        } else {
+            res.status(404).send({
+                success: false,
+                message: `No se pudo actualizar el proveedor con id=${id}`
             });
         }
-
-        res.status(404).json({
-            success: false,
-            message: `No se encontró el proveedor con id=${req.params.id}`
-        });
     } catch (error) {
-        res.status(500).json({
+        res.status(500).send({
             success: false,
-            message: error.message || `Error al actualizar el proveedor con id=${req.params.id}`
+            message: `Error al actualizar el proveedor con id=${id}`
         });
     }
 };

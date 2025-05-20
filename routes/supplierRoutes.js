@@ -2,58 +2,17 @@ const express = require('express');
 const router = express.Router();
 const supplierController = require('../controllers/supplierController');
 const { verifyToken, isAdmin, isCoordinator } = require('../middlewares/authJwt');
-const { check } = require('express-validator');
 
-// Rutas para Proveedores
-router.post('/', 
-    [
-        verifyToken,
-        isAdmin,
-        check('name', 'El nombre es requerido').notEmpty(),
-        check('products', 'Debe asociar al menos un producto').notEmpty()
-    ], 
-    supplierController.createSupplier
-);
+// Admin: CRUD completo
+router.post('/', [verifyToken, isAdmin], supplierController.create);
+router.put('/:id', [verifyToken, isAdmin], supplierController.update);
+router.delete('/:id', [verifyToken, isAdmin], supplierController.delete);
 
-router.get('/', 
-    verifyToken, 
-    supplierController.getAllSuppliers
-);
+// Coordinador: Actualización parcial
+router.patch('/:id', [verifyToken, isCoordinator], supplierController.partialUpdate);
 
-router.get('/:id', 
-    [
-        verifyToken,
-        check('id', 'ID inválido').isUUID()
-    ],
-    supplierController.getSupplierById
-);
-
-router.put('/:id',
-    [
-        verifyToken,
-        isAdmin,
-        check('id', 'ID inválido').isUUID()
-    ],
-    supplierController.updateSupplier
-);
-
-router.delete('/:id',
-    [
-        verifyToken,
-        isAdmin,
-        check('id', 'ID inválido').isUUID()
-    ],
-    supplierController.deleteSupplier
-);
-
-// Ruta para coordinadores
-router.patch('/:id',
-    [
-        verifyToken,
-        isCoordinator,
-        check('id', 'ID inválido').isUUID()
-    ],
-    supplierController.partialUpdateSupplier
-);
+// Todos autenticados: Consultas
+router.get('/', verifyToken, supplierController.findAll);
+router.get('/:id', verifyToken, supplierController.findOne);
 
 module.exports = router;
