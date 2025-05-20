@@ -6,11 +6,11 @@ const { Op } = require("sequelize");
 // Crear y guardar un nuevo proveedor (solo admin)
 exports.create = async (req, res) => {
     try {
-        // Validación de campos requeridos
+        // Validación básica
         if (!req.body.name) {
             return res.status(400).json({
                 success: false,
-                message: "El nombre del proveedor es obligatorio"
+                message: "El nombre del proveedor es requerido"
             });
         }
 
@@ -37,12 +37,12 @@ exports.create = async (req, res) => {
             address: req.body.address
         });
 
-        // Asociar productos
+        // Asociar productos si existen
         if (req.body.products && req.body.products.length > 0) {
             await supplier.setProducts(req.body.products);
         }
 
-        // Obtener proveedor con productos para la respuesta
+        // Obtener el proveedor con productos para la respuesta
         const supplierWithProducts = await Supplier.findByPk(supplier.id, {
             include: [{
                 model: Product,
@@ -64,6 +64,7 @@ exports.create = async (req, res) => {
         });
     }
 };
+
 
 // Obtener todos los proveedores (público o autenticado según requerimiento)
 exports.findAll = async (req, res) => {
