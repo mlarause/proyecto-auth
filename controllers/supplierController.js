@@ -1,41 +1,75 @@
 const db = require("../models");
 const Supplier = db.supplier;
+const Product = db.product;
 // Eliminamos la dependencia de Op ya que no es estrictamente necesaria
 
 // Crear y guardar un nuevo proveedor
 exports.create = (req, res) => {
-    if (!req.body.name) {
-        return res.status(400).send({
-            success: false,
-            message: "El nombre del proveedor no puede estar vacío"
+  if (!req.body.name) {
+    return res.status(400).send({
+      success: false,
+      message: "El nombre no puede estar vacío"
+    });
+  }
+
+  Supplier.create({
+    name: req.body.name,
+    contact: req.body.contact,
+    email: req.body.email,
+    phone: req.body.phone,
+    address: req.body.address
+  })
+  .then(supplier => {
+    if (req.body.products) {
+      Product.findAll({
+        where: {
+          id: req.body.products
+        }
+      }).then(products => {
+        supplier.setProducts(products).then(() => {
+          res.send({
+            success: true,
+            message: "Proveedor creado exitosamente",
+            data: supplier
+          });
         });
+      });
+    } else {
+      res.send({
+        success: true,
+        message: "Proveedor creado exitosamente",
+        data: supplier
+      });
     }
-
-    const supplier = {
-        name: req.body.name,
-        contact: req.body.contact,
-        email: req.body.email,
-        phone: req.body.phone,
-        address: req.body.address,
-        status: req.body.status ? req.body.status : true
-    };
-
-    Supplier.create(supplier)
-        .then(data => {
-            res.send({
-                success: true,
-                message: "Proveedor creado exitosamente",
-                data: data
-            });
-        })
-        .catch(err => {
-            res.status(500).send({
-                success: false,
-                message: err.message || "Ocurrió un error al crear el proveedor"
-            });
-        });
+  })
+  .catch(err => {
+    res.status(500).send({
+      success: false,
+      message: err.message || "Error al crear el proveedor"
+    });
+  });
 };
 
+exports.findAll = (req, res) => {
+  Supplier.findAll({
+    include: [{
+      model: Product,
+      attributes: ['id', 'name']
+    }]
+  })
+  .then(suppliers => {
+    res.send({
+      success: true,
+      data: suppliers
+    });
+  })
+  .catch(err => {
+    res.status(500).send({
+      success: false,
+      message: err.message || "Error al obtener los proveedores"
+    });
+  });
+};
 // Obtener todos los proveedores (versión simplificada sin búsqueda)
 exports.findAll = (req, res) => {
     Supplier.findAll()
