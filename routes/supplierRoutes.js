@@ -2,20 +2,58 @@ const express = require('express');
 const router = express.Router();
 const supplierController = require('../controllers/supplierController');
 const { verifyToken, isAdmin, isCoordinator } = require('../middlewares/authJwt');
+const { check } = require('express-validator');
 
-// Aplicar verifyToken a todas las rutas
-router.use(verifyToken);
+// Rutas para Proveedores
+router.post('/', 
+    [
+        verifyToken,
+        isAdmin,
+        check('name', 'El nombre es requerido').notEmpty(),
+        check('products', 'Debe asociar al menos un producto').notEmpty()
+    ], 
+    supplierController.createSupplier
+);
 
-// Admin: CRUD completo
-router.post('/', isAdmin, supplierController.create);
-router.put('/:id', isAdmin, supplierController.update);
-router.delete('/:id', isAdmin, supplierController.delete);
+router.get('/', 
+    verifyToken, 
+    supplierController.getAllSuppliers
+);
 
-// Coordinador: Actualización limitada
-router.patch('/:id', isCoordinator, supplierController.partialUpdate);
+router.get('/:id', 
+    [
+        verifyToken,
+        check('id', 'ID inválido').isUUID()
+    ],
+    supplierController.getSupplierById
+);
 
-// Todos autenticados: Consultas
-router.get('/', supplierController.findAll);
-router.get('/:id', supplierController.findOne);
+router.put('/:id',
+    [
+        verifyToken,
+        isAdmin,
+        check('id', 'ID inválido').isUUID()
+    ],
+    supplierController.updateSupplier
+);
+
+router.delete('/:id',
+    [
+        verifyToken,
+        isAdmin,
+        check('id', 'ID inválido').isUUID()
+    ],
+    supplierController.deleteSupplier
+);
+
+// Ruta para coordinadores
+router.patch('/:id',
+    [
+        verifyToken,
+        isCoordinator,
+        check('id', 'ID inválido').isUUID()
+    ],
+    supplierController.partialUpdateSupplier
+);
 
 module.exports = router;

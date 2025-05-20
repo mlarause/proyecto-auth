@@ -1,71 +1,49 @@
 const jwt = require("jsonwebtoken");
 const config = require("../config/auth.config");
-const db = require("../models");
-const User = db.user;
+const { check } = require('express-validator');
 
-exports.verifyToken = (req, res, next) => {
-    const token = req.headers['authorization']?.split(' ')[1] || 
-                 req.headers['x-access-token'];
-    
-    if (!token) {
-        return res.status(403).json({ 
-            success: false,
-            message: "Token no proporcionado" 
-        });
-    }
-
-    jwt.verify(token, config.secret, (err, decoded) => {
-        if (err) {
-            return res.status(401).json({ 
+exports.verifyToken = [
+    check('token', 'Token es requerido').notEmpty(),
+    (req, res, next) => {
+        const token = req.header('x-auth-token') || req.header('authorization')?.split(' ')[1];
+        
+        if (!token) {
+            return res.status(401).json({
                 success: false,
-                message: "Token inválido o expirado",
-                error: err.message 
+                message: 'Acceso denegado. Token no proporcionado'
             });
         }
-        
-        req.userId = decoded.id;
-        next();
+
+        try {
+            const decoded = jwt.verify(token, config.secret);
+            req.user = decoded;
+            next();
+        } catch (ex) {
+            res.status(400).json({
+                success: false,
+                message: 'Token inválido o expirado',
+                error: ex.message
+            });
+        }
+    }
+];
+
+exports.isAdmin = (req, res, next) => {
+    if (req.user.roles.includes('admin')) {
+        return next();
+    }
+    res.status(403).json({
+        success: false,
+        message: 'Se requiere rol de administrador'
     });
 };
 
-exports.isAdmin = async (req, res, next) => {
-    try {
-        const user = await User.findByPk(req.userId, {
-            include: [db.Role]
-        });
-
-        const isAdmin = user.Roles.some(role => role.name === 'admin');
-        if (isAdmin) return next();
-        
-        res.status(403).json({
-            success: false,
-            message: "Se requiere rol de administrador"
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Error al verificar roles"
-        });
+exports.isCoordinator = (req, res, next) => {
+    if (req.user.roles.includes('coordinator')) {
+        return next();
     }
-};
-
-exports.isCoordinator = async (req, res, next) => {
-    try {
-        const user = await User.findByPk(req.userId, {
-            include: [db.Role]
-        });
-
-        const isCoordinator = user.Roles.some(role => role.name === 'coordinator');
-        if (isCoordinator) return next();
-        
-        res.status(403).json({
-            success: false,
-            message: "Se requiere rol de coordinador"
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Error al verificar roles"
-        });
-    }
+    res.status(403).json({
+        success: false,
+        message: 'Se requiere rol de coordinador'
+    });
 };
