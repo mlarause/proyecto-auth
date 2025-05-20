@@ -6,26 +6,25 @@ const Product = db.product;
 // Crear y guardar un nuevo proveedor
 exports.create = async (req, res) => {
     try {
-        // Validación como en productos
         if (!req.body.name) {
             return res.status(400).json({
                 success: false,
-                message: "El nombre es requerido"
+                message: "El nombre del proveedor es requerido"
             });
         }
 
-        // Convertir products a array si es necesario (como en productos)
-        const productIds = req.body.products ? 
-            (Array.isArray(req.body.products) ? req.body.products : [req.body.products]) : 
-            [];
+        // Convertir products a array si viene como string
+        const products = Array.isArray(req.body.products) ? 
+            req.body.products : 
+            [req.body.products].filter(Boolean);
 
-        // Validar productos existentes
-        if (productIds.length > 0) {
-            const productsCount = await Product.count({
-                where: { id: productIds }
+        // Validar productos
+        if (products.length > 0) {
+            const productsExist = await Product.count({
+                where: { id: products }
             });
             
-            if (productsCount !== productIds.length) {
+            if (productsExist !== products.length) {
                 return res.status(400).json({
                     success: false,
                     message: "Algunos productos no existen"
@@ -33,7 +32,7 @@ exports.create = async (req, res) => {
             }
         }
 
-        // Crear proveedor (igual estructura que productos)
+        // Crear proveedor
         const supplier = await Supplier.create({
             name: req.body.name,
             contact: req.body.contact,
@@ -42,22 +41,15 @@ exports.create = async (req, res) => {
             address: req.body.address
         });
 
-        // Asociar productos (como se hace con subcategorías en productos)
-        if (productIds.length > 0) {
-            await supplier.setProducts(productIds);
+        // Asociar productos
+        if (products.length > 0) {
+            await supplier.setProducts(products);
         }
 
-        // Respuesta consistente con productos
         res.status(201).json({
             success: true,
             message: "Proveedor creado exitosamente",
-            data: await Supplier.findByPk(supplier.id, {
-                include: [{
-                    model: Product,
-                    attributes: ['id', 'name'],
-                    through: { attributes: [] }
-                }]
-            })
+            data: supplier
         });
 
     } catch (error) {
@@ -66,6 +58,43 @@ exports.create = async (req, res) => {
             message: error.message || "Error al crear el proveedor"
         });
     }
+};
+
+exports.findAll = (req, res) => {
+  Supplier.findAll({
+    include: [{
+      model: Product,
+      attributes: ['id', 'name']
+    }]
+  })
+  .then(suppliers => {
+    res.send({
+      success: true,
+      data: suppliers
+    });
+  })
+  .catch(err => {
+    res.status(500).send({
+      success: false,
+      message: err.message || "Error al obtener los proveedores"
+    });
+  });
+};
+// Obtener todos los proveedores (versión simplificada sin búsqueda)
+exports.findAll = (req, res) => {
+    Supplier.findAll()
+        .then(data => {
+            res.send({
+                success: true,
+                data: data
+            });
+        })
+        .catch(err => {
+            res.status(500).send({
+                success: false,
+                message: err.message || "Ocurrió un error al recuperar los proveedores"
+            });
+        });
 };
 
 // Resto de los métodos se mantienen igual que antes (findOne, update, delete, etc.)

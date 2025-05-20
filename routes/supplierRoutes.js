@@ -3,7 +3,7 @@ const router = express.Router();
 const supplierController = require('../controllers/supplierController');
 const { verifyToken, isAdmin, isCoordinator } = require('../middlewares/authJwt');
 
-// Todas las rutas requieren token
+// Aplicar verifyToken a todas las rutas
 router.use(verifyToken);
 
 // Admin: CRUD completo
@@ -11,10 +11,10 @@ router.post('/', isAdmin, supplierController.create);
 router.put('/:id', isAdmin, supplierController.update);
 router.delete('/:id', isAdmin, supplierController.delete);
 
-// Coordinador: Actualización parcial
+// Coordinador: Actualización limitada
 router.patch('/:id', isCoordinator, supplierController.partialUpdate);
 
-// Todos pueden consultar
+// Todos autenticados: Consultas
 router.get('/', supplierController.findAll);
 router.get('/:id', supplierController.findOne);
 
