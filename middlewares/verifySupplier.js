@@ -1,26 +1,42 @@
 const db = require("../models");
 const Supplier = db.supplier;
 
-checkDuplicateSupplierEmail = async (req, res, next) => {
+checkDuplicateSupplier = async (req, res, next) => {
   try {
-    const supplier = await Supplier.findOne({ email: req.body.email });
+    // Verificar por email duplicado
+    const supplierByEmail = await Supplier.findOne({ 
+      email: req.body.email 
+    });
     
-    if (supplier) {
+    if (supplierByEmail) {
       return res.status(400).json({
         success: false,
-        message: "Error. El email ya está en uso"
+        message: "El email ya está registrado"
       });
     }
+
+    // Verificar por nombre duplicado
+    const supplierByName = await Supplier.findOne({ 
+      name: req.body.name 
+    });
     
+    if (supplierByName) {
+      return res.status(400).json({
+        success: false,
+        message: "El nombre de proveedor ya existe"
+      });
+    }
+
     next();
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
+      message: "Error al verificar proveedor",
+      error: error.message
     });
   }
 };
 
 module.exports = {
-  checkDuplicateSupplierEmail
+  checkDuplicateSupplier
 };

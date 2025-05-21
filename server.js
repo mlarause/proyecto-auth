@@ -3,6 +3,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const mongoose = require("mongoose");
+const supplierRoutes = require('./routes/supplierRoutes');
 
 const app = express();
 
@@ -14,6 +15,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+app.use('/api/suppliers', supplierRoutes);
 
 // Middlewares
 app.use(bodyParser.json());

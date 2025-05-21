@@ -7,29 +7,38 @@ verifyToken = (req, res, next) => {
   let token = req.headers["x-access-token"];
 
   if (!token) {
-    return res.status(403).send({ message: "No se proporcionó token!" });
+    return res.status(403).json({ 
+      success: false,
+      message: "No se proporcionó token" 
+    });
   }
 
   jwt.verify(token, config.secret, async (err, decoded) => {
     if (err) {
-      return res.status(401).send({
+      return res.status(401).json({
         success: false,
         message: "Token inválido o expirado"
       });
     }
     
     try {
-      // Cambio crucial aquí: findByPk -> findById (Mongoose)
+      // Cambio crucial: findByPk -> findById (Mongoose)
       const user = await User.findById(decoded.id).exec();
       
       if (!user) {
-        return res.status(404).send({ message: "Usuario no encontrado." });
+        return res.status(404).json({
+          success: false,
+          message: "Usuario no encontrado"
+        });
       }
       
       req.userId = decoded.id;
       next();
     } catch (error) {
-      return res.status(500).send({ message: "Error al verificar usuario" });
+      return res.status(500).json({
+        success: false,
+        message: "Error al verificar usuario"
+      });
     }
   });
 };
@@ -45,9 +54,15 @@ isAdmin = async (req, res, next) => {
       }
     }
 
-    res.status(403).send({ message: "Requiere rol de Administrador!" });
+    res.status(403).json({
+      success: false,
+      message: "Requiere rol de Administrador"
+    });
   } catch (err) {
-    res.status(500).send({ message: err.message });
+    res.status(500).json({
+      success: false,
+      message: err.message
+    });
   }
 };
 
