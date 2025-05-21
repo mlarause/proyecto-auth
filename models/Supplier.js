@@ -1,56 +1,108 @@
 const mongoose = require('mongoose');
-const Schema = mongoose.Schema;
+const { Schema } = mongoose;
 
 const supplierSchema = new Schema({
-  name: {
-    type: String,
-    required: [true, 'El nombre es requerido'],
-    trim: true,
-    maxlength: [100, 'El nombre no puede exceder los 100 caracteres'],
-    minlength: [2, 'El nombre debe tener al menos 2 caracteres']
-  },
-  contact: {
-    type: String,
-    required: [true, 'El contacto es requerido'],
-    trim: true
-  },
-  email: {
-    type: String,
-    required: [true, 'El email es requerido'],
-    unique: true,
-    trim: true,
-    lowercase: true,
-    match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Por favor ingrese un email válido']
-  },
-  phone: {
-    type: String,
-    required: [true, 'El teléfono es requerido'],
-    trim: true
-  },
-  address: {
-    type: String,
-    required: [true, 'La dirección es requerida'],
-    trim: true
-  },
-  products: [{
-    type: Schema.Types.ObjectId,
-    ref: 'Product'
-  }],
-  createdBy: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  }
+    name: {
+        type: String,
+        required: [true, 'Supplier name is required'],
+        trim: true,
+        minlength: [2, 'Supplier name must be at least 2 characters'],
+        maxlength: [100, 'Supplier name cannot exceed 100 characters']
+    },
+    email: {
+        type: String,
+        required: [true, 'Email is required'],
+        unique: true,
+        trim: true,
+        lowercase: true,
+        match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
+    },
+    phone: {
+        type: String,
+        trim: true,
+        validate: {
+            validator: function(v) {
+                return /^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/.test(v);
+            },
+            message: props => `${props.value} is not a valid phone number!`
+        }
+    },
+    address: {
+        street: {
+            type: String,
+            trim: true,
+            maxlength: [100, 'Street address cannot exceed 100 characters']
+        },
+        city: {
+            type: String,
+            trim: true,
+            maxlength: [50, 'City name cannot exceed 50 characters']
+        },
+        state: {
+            type: String,
+            trim: true,
+            maxlength: [50, 'State name cannot exceed 50 characters']
+        },
+        zipCode: {
+            type: String,
+            trim: true,
+            validate: {
+                validator: function(v) {
+                    return /^\d{5}(?:[-\s]\d{4})?$/.test(v);
+                },
+                message: props => `${props.value} is not a valid ZIP code!`
+            }
+        },
+        country: {
+            type: String,
+            trim: true,
+            default: 'United States',
+            maxlength: [50, 'Country name cannot exceed 50 characters']
+        }
+    },
+    isActive: {
+        type: Boolean,
+        default: true
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
+    }
 }, {
-  timestamps: true,
-  versionKey: false
+    timestamps: true,
+    versionKey: false
 });
 
-// Índices para mejor performance
-supplierSchema.index({ name: 1 });
+// Custom validation to ensure at least one contact method
+supplierSchema.pre('validate', function(next) {
+    if (!this.email && !this.phone) {
+        this.invalidate('contact', 'At least email or phone must be provided', this.contact);
+    }
+    next();
+});
+
+// Single index definition to avoid duplicate warning
 supplierSchema.index({ email: 1 }, { unique: true });
-supplierSchema.index({ createdBy: 1 });
+supplierSchema.index({ name: 1 }); // For faster searching by name
 
-const Supplier = mongoose.model('Supplier', supplierSchema);
+// Middleware to update the updatedAt field
+supplierSchema.pre('save', function(next) {
+    this.updatedAt = Date.now();
+    next();
+});
 
-module.exports = Supplier;
+// Static method to find active suppliers
+supplierSchema.statics.findActive = function() {
+    return this.find({ isActive: true });
+};
+
+// Instance method to get supplier info
+supplierSchema.methods.getInfo = function() {
+    return `${this.name} - ${this.email} (${this.phone})`;
+};
+
+module.exports = mongoose.model('Supplier', supplierSchema);
