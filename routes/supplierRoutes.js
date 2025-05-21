@@ -3,53 +3,63 @@ const router = express.Router();
 const supplierController = require('../controllers/supplierController');
 const authJwt = require('../middlewares/authJwt');
 
-// Ruta POST corregida para crear proveedor
-router.post('/', 
-    authJwt.verifyToken, 
-    async (req, res, next) => {
-        try {
-            // Verificación de usuario usando Mongoose
-            const user = await require('../models/User').findById(req.userId);
-            if (!user) {
-                return res.status(403).json({ 
-                    success: false,
-                    message: "No autorizado" 
-                });
-            }
-            next();
-        } catch (error) {
-            return res.status(500).json({
+// Middleware de verificación mejorado
+const verifySupplierToken = async (req, res, next) => {
+    try {
+        const token = req.headers['x-access-token'];
+        if (!token) {
+            return res.status(403).json({ 
                 success: false,
-                message: "Error de autenticación"
+                message: "No se proporcionó token" 
             });
         }
-    },
+
+        const decoded = jwt.verify(token, config.secret);
+        const user = await db.User.findById(decoded.id).exec();
+        
+        if (!user) {
+            return res.status(404).json({ 
+                success: false,
+                message: "Usuario no encontrado" 
+            });
+        }
+
+        req.userId = decoded.id;
+        next();
+    } catch (error) {
+        return res.status(401).json({
+            success: false,
+            message: "Token inválido",
+            error: error.message
+        });
+    }
+};
+
+// Rutas para proveedores
+router.post('/', 
+    verifySupplierToken,
     authJwt.isAdmin,
     supplierController.createSupplier
 );
 
-// Obtener todos los proveedores
 router.get('/', 
-    authJwt.verifyToken,
+    verifySupplierToken,
     supplierController.getAllSuppliers
 );
 
-// Obtener un proveedor por ID
 router.get('/:id', 
-    authJwt.verifyToken,
+    verifySupplierToken,
     supplierController.getSupplierById
 );
 
-// Actualizar proveedor
 router.put('/:id', 
-    authJwt.verifyToken,
+    verifySupplierToken,
     authJwt.isAdmin,
     supplierController.updateSupplier
 );
 
-// Eliminar proveedor
 router.delete('/:id', 
-    authJwt.verifyToken,
+    verifySupplierToken,
     authJwt.isAdmin,
     supplierController.deleteSupplier
 );
