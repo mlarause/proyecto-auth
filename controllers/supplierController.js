@@ -1,10 +1,13 @@
 const db = require("../models");
 
-// Función para verificar permisos
+// Función para verificar permisos mejorada
 const checkSupplierPermission = async (userId, action) => {
   try {
     const user = await db.User.findById(userId)
-      .populate('roles')
+      .populate({
+        path: 'roles',
+        options: { strictPopulate: false }
+      })
       .exec();
       
     if (!user) return false;
@@ -29,7 +32,7 @@ exports.createSupplier = async (req, res) => {
     if (!canCreate) {
       return res.status(403).json({ 
         success: false,
-        message: "No tienes permisos para esta acción" 
+        message: "No tienes permisos para crear proveedores" 
       });
     }
 
