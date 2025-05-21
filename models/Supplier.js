@@ -5,51 +5,42 @@ const supplierSchema = new Schema({
     name: {
         type: String,
         required: true,
-        trim: true,
-        minlength: 2,
-        maxlength: 100
+        trim: true
+    },
+    contact: {
+        type: String,
+        required: true,
+        trim: true
     },
     email: {
         type: String,
         required: true,
-        unique: true,  // Esto crea un índice único automáticamente
+        unique: true,  // Only define index here
         trim: true,
-        lowercase: true,
-        match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
+        lowercase: true
     },
     phone: {
         type: String,
-        trim: true,
-        validate: {
-            validator: function(v) {
-                return /^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/.test(v);
-            },
-            message: props => `${props.value} is not a valid phone number!`
-        }
+        required: true,
+        trim: true
     },
     address: {
         type: String,
-        trim: true,
-        maxlength: 200
+        required: true,
+        trim: true
     },
+    products: [{
+        type: Schema.Types.ObjectId,
+        ref: 'Product'
+    }],
     isActive: {
         type: Boolean,
         default: true
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now
-    },
-    updatedAt: {
-        type: Date,
-        default: Date.now
     }
 }, {
     timestamps: true,
     versionKey: false
 });
 
-// Eliminé la línea schema.index() duplicada que causaba la advertencia
-// El índice único ya está definido en el campo email con 'unique: true'
-
+// Removed duplicate index definition - using only 'unique: true' above
 module.exports = mongoose.model('Supplier', supplierSchema);

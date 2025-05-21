@@ -1,35 +1,81 @@
 const Supplier = require('../models/Supplier');
 const Product = require('../models/Product');
 const jwt = require('jsonwebtoken');
-const config = require('../config/auth.config');
+const config = require('../config/config');
 
-// Create a new supplier (Admin only)
+// Helper function for role verification
+const checkAccess = (userRole, requiredRoles) => {
+    return requiredRoles.includes(userRole);
+};
+
+// Create Supplier (Admin only)
 exports.createSupplier = async (req, res) => {
     try {
-        const { name, email, phone, address } = req.body;
-        
-        // Check if supplier exists
-        const existingSupplier = await Supplier.findOne({ email });
-        if (existingSupplier) {
-            return res.status(400).json({ success: false, message: 'Supplier already exists' });
+        if (!checkAccess(req.user.role, ['admin'])) {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Require Admin Role!' 
+            });
         }
 
-        const supplier = new Supplier({ name, email, phone, address });
+        const { name, contact, email, phone, address, products } = req.body;
+        
+        // Validate product IDs
+        if (products) {
+            const validProducts = await Product.find({ _id: { $in: products } });
+            if (validProducts.length !== products.length) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'One or more products not found' 
+                });
+            }
+        }
+
+        const supplier = new Supplier({ 
+            name, 
+            contact, 
+            email, 
+            phone, 
+            address, 
+            products 
+        });
+        
         await supplier.save();
 
-        res.status(201).json({ success: true, data: supplier });
+        res.status(201).json({ 
+            success: true, 
+            data: supplier 
+        });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(500).json({ 
+            success: false, 
+            message: error.message 
+        });
     }
 };
 
-// Get all suppliers (Admin, Coordinator, Assistant)
-exports.getAllSuppliers = async (req, res) => {
+// Get All Suppliers (Admin, Coordinator, Assistant)
+exports.getSuppliers = async (req, res) => {
     try {
-        const suppliers = await Supplier.find();
-        res.status(200).json({ success: true, data: suppliers });
+        if (!checkAccess(req.user.role, ['admin', 'coordinator', 'assistant'])) {
+            return res.status(403).json({ 
+                success: false, 
+                message: 'Unauthorized access' 
+            });
+        }
+
+        const suppliers = await Supplier.find({ isActive: true })
+            .populate('products', 'name price');
+            
+        res.status(200).json({ 
+            success: true, 
+            data: suppliers 
+        });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(500).json({ 
+            success: false, 
+            message: error.message 
+        });
     }
 };
 

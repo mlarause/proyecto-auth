@@ -3,18 +3,34 @@ const router = express.Router();
 const supplierController = require('../controllers/supplierController');
 const { verifyToken, verifyRole } = require('../middlewares/auth');
 
-// Admin routes
-router.post('/', verifyToken, verifyRole(['admin']), supplierController.createSupplier);
-router.delete('/:id', verifyToken, verifyRole(['admin']), supplierController.deleteSupplier);
+// Admin only routes
+router.post('/', 
+    verifyToken, 
+    verifyRole(['admin']), 
+    supplierController.createSupplier
+);
 
-// Admin and Coordinator routes
-router.put('/:id', verifyToken, verifyRole(['admin', 'coordinator']), supplierController.updateSupplier);
+router.delete('/:id', 
+    verifyToken, 
+    verifyRole(['admin']), 
+    supplierController.deleteSupplier
+);
 
-// Admin, Coordinator and Assistant routes
-router.get('/', verifyToken, verifyRole(['admin', 'coordinator', 'assistant']), supplierController.getAllSuppliers);
-router.get('/:id', verifyToken, verifyRole(['admin', 'coordinator', 'assistant']), supplierController.getSupplierById);
+// Admin & Coordinator routes
+router.put('/:id', 
+    verifyToken, 
+    verifyRole(['admin', 'coordinator']), 
+    supplierController.updateSupplier
+);
 
-// Supplier token generation (public route)
+// All authenticated roles
+router.get('/', 
+    verifyToken, 
+    verifyRole(['admin', 'coordinator', 'assistant']), 
+    supplierController.getSuppliers
+);
+
+// Supplier token generation (public)
 router.post('/token', supplierController.generateSupplierToken);
 
 module.exports = router;

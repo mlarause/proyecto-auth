@@ -1,33 +1,27 @@
 const jwt = require("jsonwebtoken");
 const config = require("../config/auth.config");
 
-const verifyToken = (req, res, next) => {
-  const token = req.headers["x-access-token"] || req.headers["authorization"];
-  
-  if (!token) {
-    return res.status(403).send({
-      success: false,
-      message: "No token provided!"
-    });
-  }
-
-  try {
-    const decoded = jwt.verify(token.replace('Bearer ', ''), config.jwtSecret);
-    req.user = decoded;
-    next();
-  } catch (err) {
-    if (err.name === 'TokenExpiredError') {
-      return res.status(401).send({
-        success: false,
-        message: "Token expired",
-        expiredAt: err.expiredAt
-      });
+exports.verifyToken = (req, res, next) => {
+    const token = req.headers['authorization']?.split(' ')[1] || req.headers['x-access-token'];
+    
+    if (!token) {
+        return res.status(403).json({ 
+            success: false, 
+            message: 'No token provided' 
+        });
     }
-    return res.status(401).send({
-      success: false,
-      message: "Unauthorized!"
+
+    jwt.verify(token, config.jwtSecret, (err, decoded) => {
+        if (err) {
+            return res.status(401).json({ 
+                success: false, 
+                message: err.name === 'TokenExpiredError' ? 'Token expired' : 'Invalid token',
+                expiredAt: err.expiredAt
+            });
+        }
+        req.user = decoded;
+        next();
     });
-  }
 };
 
 const isAdmin = (req, res, next) => {
@@ -66,18 +60,16 @@ const isAssistant = (req, res, next) => {
   });
 };
 
-const verifyRole = (allowedRoles) => {
-  return (req, res, next) => {
-    if (allowedRoles.includes(req.user.role)) {
-      next();
-      return;
-    }
-
-    res.status(403).send({
-      success: false,
-      message: `Require one of these roles: ${allowedRoles.join(', ')}`
-    });
-  };
+exports.verifyRole = (allowedRoles) => {
+    return (req, res, next) => {
+        if (!allowedRoles.includes(req.user.role)) {
+            return res.status(403).json({ 
+                success: false, 
+                message: `Requires one of: ${allowedRoles.join(', ')}` 
+            });
+        }
+        next();
+    };
 };
 
 // Función específica para proveedores (suppliers)
