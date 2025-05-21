@@ -1,24 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const supplierController = require('../controllers/supplierController');
-const { verifyToken, isAdmin, isCoordinator } = require('../middlewares/authJwt');
+const authJwt = require('../middlewares/authJwt');
 
-// Middleware de diagnóstico para rutas
-router.use((req, res, next) => {
-    console.log(`[RUTA] ${req.method} ${req.originalUrl}`);
-    next();
-});
-
-// Admin: CRUD completo
-router.post('/', [verifyToken, isAdmin], supplierController.create);
-router.put('/:id', [verifyToken, isAdmin], supplierController.update);
-router.delete('/:id', [verifyToken, isAdmin], supplierController.delete);
-
-// Coordinador: Actualización parcial
-router.patch('/:id', [verifyToken, isCoordinator], supplierController.partialUpdate);
-
-// Todos autenticados: Consultas
-router.get('/', verifyToken, supplierController.findAll);
-router.get('/:id', verifyToken, supplierController.findOne);
+// Rutas para proveedores
+router.post('/', [authJwt.verifyToken, authJwt.isAdmin], supplierController.createSupplier);
+router.get('/', [authJwt.verifyToken], supplierController.getAllSuppliers);
+router.get('/:id', [authJwt.verifyToken], supplierController.getSupplierById);
+router.put('/:id', [authJwt.verifyToken, authJwt.isAdmin], supplierController.updateSupplier);
+router.delete('/:id', [authJwt.verifyToken, authJwt.isAdmin], supplierController.deleteSupplier);
 
 module.exports = router;

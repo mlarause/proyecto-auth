@@ -1,67 +1,59 @@
 const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-const SupplierSchema = new mongoose.Schema({
+const supplierSchema = new Schema({
   name: {
     type: String,
-    required: [true, 'El nombre es requerido'],
-    trim: true,
-    maxlength: [100, 'El nombre no puede exceder 100 caracteres']
+    required: true,
+    trim: true
   },
   contact: {
     type: String,
-    required: [true, 'El contacto es requerido'],
+    required: true,
     trim: true
   },
   email: {
     type: String,
-    required: [true, 'El email es requerido'],
+    required: true,
     unique: true,
     trim: true,
-    lowercase: true,
-    match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Email inválido']
+    lowercase: true
   },
   phone: {
     type: String,
-    required: [true, 'El teléfono es requerido'],
+    required: true,
     trim: true
   },
   address: {
     type: String,
-    required: [true, 'La dirección es requerida'],
+    required: true,
     trim: true
   },
   products: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Product',
-    validate: {
-      validator: async function(products) {
-        const count = await mongoose.model('Product').countDocuments({ _id: { $in: products } });
-        return count === products.length;
-      },
-      message: 'Uno o más productos no existen'
-    }
+    type: Schema.Types.ObjectId,
+    ref: 'Product'
   }],
   createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
-  active: {
-    type: Boolean,
-    default: true
-  }
-}, {
-  timestamps: true,
-  versionKey: false
-});
-
-// Middleware para manejar errores de duplicados
-SupplierSchema.post('save', function(error, doc, next) {
-  if (error.name === 'MongoServerError' && error.code === 11000) {
-    next(new Error('El correo electrónico ya está registrado'));
-  } else {
-    next(error);
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
 });
 
-module.exports = mongoose.model('Supplier', SupplierSchema);
+// Middleware para actualizar la fecha de modificación
+supplierSchema.pre('save', function(next) {
+  this.updatedAt = Date.now();
+  next();
+});
+
+const Supplier = mongoose.model('Supplier', supplierSchema);
+
+module.exports = Supplier;
