@@ -20,57 +20,64 @@ const checkPermissions = async (userId, requiredPermission) => {
 
 // Crear proveedor (Admin y Coordinador)
 exports.createSupplier = async (req, res) => {
-  try {
-    const hasPermission = await checkPermissions(req.userId, 'create');
-    if (!hasPermission) {
-      return res.status(403).json({
-        success: false,
-        message: "No tienes permisos para crear proveedores"
-      });
-    }
+    try {
+        // Validar campos requeridos
+        if (!req.body.name || !req.body.email) {
+            return res.status(400).json({
+                success: false,
+                message: "Nombre y email son obligatorios"
+            });
+        }
 
-    // Validar relación con producto
-    if (req.body.products && req.body.products.length > 0) {
-      const products = await Product.find({ _id: { $in: req.body.products } });
-      if (products.length !== req.body.products.length) {
-        return res.status(400).json({
-          success: false,
-          message: "Algunos productos no existen"
+        // Verificar email único
+        const existingSupplier = await Supplier.findOne({ email: req.body.email });
+        if (existingSupplier) {
+            return res.status(400).json({
+                success: false,
+                message: "El email ya está registrado"
+            });
+        }
+
+        // Validar productos relacionados
+        if (req.body.products && req.body.products.length > 0) {
+            const validProducts = await Product.countDocuments({ 
+                _id: { $in: req.body.products } 
+            });
+            if (validProducts !== req.body.products.length) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Algunos productos no existen"
+                });
+            }
+        }
+
+        // Crear nuevo proveedor
+        const newSupplier = new Supplier({
+            name: req.body.name,
+            contact: req.body.contact || "",
+            email: req.body.email,
+            phone: req.body.phone || "",
+            address: req.body.address || "",
+            products: req.body.products || [],
+            createdBy: req.userId
         });
-      }
+
+        const savedSupplier = await newSupplier.save();
+
+        res.status(201).json({
+            success: true,
+            data: savedSupplier,
+            message: "Proveedor creado exitosamente"
+        });
+
+    } catch (error) {
+        console.error("Error en createSupplier:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error al crear proveedor",
+            error: error.message
+        });
     }
-
-    const newSupplier = new Supplier({
-      name: req.body.name,
-      contact: req.body.contact,
-      email: req.body.email,
-      phone: req.body.phone,
-      address: req.body.address,
-      products: req.body.products || [],
-      createdBy: req.userId
-    });
-
-    const savedSupplier = await newSupplier.save();
-    
-    res.status(201).json({
-      success: true,
-      data: savedSupplier,
-      message: "Proveedor creado exitosamente"
-    });
-
-  } catch (error) {
-    if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: "El email ya está registrado"
-      });
-    }
-    res.status(500).json({
-      success: false,
-      message: "Error al crear proveedor",
-      error: error.message
-    });
-  }
 };
 
 // Obtener todos los proveedores (todos los roles)
