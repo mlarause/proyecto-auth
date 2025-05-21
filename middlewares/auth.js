@@ -1,120 +1,48 @@
-const jwt = require("jsonwebtoken");
-const config = require("../config/auth.config");
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
-exports.verifyToken = (req, res, next) => {
-    const token = req.headers['authorization']?.split(' ')[1] || req.headers['x-access-token'];
+exports.authenticate = async (req, res, next) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
     
     if (!token) {
-        return res.status(403).json({ 
-            success: false, 
-            message: 'No token provided' 
-        });
-    }
-
-    jwt.verify(token, config.jwtSecret, (err, decoded) => {
-        if (err) {
-            return res.status(401).json({ 
-                success: false, 
-                message: err.name === 'TokenExpiredError' ? 'Token expired' : 'Invalid token',
-                expiredAt: err.expiredAt
-            });
-        }
-        req.user = decoded;
-        next();
-    });
-};
-
-const isAdmin = (req, res, next) => {
-  if (req.user.role === "admin") {
-    next();
-    return;
-  }
-
-  res.status(403).send({
-    success: false,
-    message: "Require Admin Role!"
-  });
-};
-
-const isCoordinador = (req, res, next) => {
-  if (req.user.role === "coordinador") {
-    next();
-    return;
-  }
-
-  res.status(403).send({
-    success: false,
-    message: "Require Coordinador Role!"
-  });
-};
-
-const isAuxiliar = (req, res, next) => {
-  if (req.user.role === "auxiliar") {
-    next();
-    return;
-  }
-
-  res.status(403).send({
-    success: false,
-    message: "Require Auxiliar Role!"
-  });
-};
-
-exports.verifyRole = (allowedRoles) => {
-    return (req, res, next) => {
-        if (!allowedRoles.includes(req.user.role)) {
-            return res.status(403).json({ 
-                success: false, 
-                message: `Requires one of: ${allowedRoles.join(', ')}` 
-            });
-        }
-        next();
-    };
-};
-
-// Función específica para proveedores (suppliers)
-const verifySupplierToken = (req, res, next) => {
-  const token = req.headers["x-access-token"] || req.headers["authorization"];
-  
-  if (!token) {
-    return res.status(403).send({
-      success: false,
-      message: "No token provided!"
-    });
-  }
-
-  try {
-    const decoded = jwt.verify(token.replace('Bearer ', ''), config.jwtSecret);
-    
-    if (decoded.role !== 'supplier') {
-      return res.status(403).send({
+      return res.status(401).json({ 
         success: false,
-        message: "Invalid token for supplier"
+        message: 'Token de autenticación requerido' 
       });
     }
-    
-    req.supplier = decoded;
-    next();
-  } catch (err) {
-    if (err.name === 'TokenExpiredError') {
-      return res.status(401).send({
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(401).json({ 
         success: false,
-        message: "Supplier token expired",
-        expiredAt: err.expiredAt
+        message: 'Usuario no encontrado' 
       });
     }
-    return res.status(401).send({
+
+    req.user = user;
+    next();
+  } catch (error) {
+    res.status(401).json({ 
       success: false,
-      message: "Unauthorized supplier token!"
+      message: 'Token inválido o expirado' 
     });
   }
 };
 
-module.exports = {
-  verifyToken,
-  isAdmin,
-  isCoordinador,
-  isAuxiliar,
-  verifyRole,
-  verifySupplierToken
+// Middleware de autorización (MODIFICADO SOLO PARA PROVEEDORES)
+exports.authorize = (roles) => {
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'No tienes permiso para esta acción',
+        requiredRoles: roles,
+        currentRole: req.user.role
+      });
+    }
+    next();
+  };
 };
