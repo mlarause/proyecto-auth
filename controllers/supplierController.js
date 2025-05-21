@@ -20,65 +20,67 @@ const checkPermissions = async (userId, requiredPermission) => {
 
 // Crear proveedor (Admin y Coordinador)
 exports.createSupplier = async (req, res) => {
-    try {
-        // Validación de datos
-        if (!req.body.name || !req.body.email) {
-            return res.status(400).json({
-                success: false,
-                message: "Nombre y email son requeridos"
-            });
-        }
-
-        // Verificar email único
-        const existingSupplier = await Supplier.findOne({ email: req.body.email });
-        if (existingSupplier) {
-            return res.status(400).json({
-                success: false,
-                message: "El email ya está registrado"
-            });
-        }
-
-        // Validar productos relacionados
-        if (req.body.products && req.body.products.length > 0) {
-            const validProducts = await Product.countDocuments({ 
-                _id: { $in: req.body.products } 
-            });
-            if (validProducts !== req.body.products.length) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Algunos productos no existen"
-                });
-            }
-        }
-
-        // Crear nuevo proveedor
-        const newSupplier = new Supplier({
-            name: req.body.name,
-            contact: req.body.contact || "",
-            email: req.body.email,
-            phone: req.body.phone || "",
-            address: req.body.address || "",
-            products: req.body.products || [],
-            createdBy: req.userId
-        });
-
-        const savedSupplier = await newSupplier.save();
-
-        return res.status(201).json({
-            success: true,
-            data: savedSupplier,
-            message: "Proveedor creado exitosamente"
-        });
-
-    } catch (error) {
-        console.error("Error en createSupplier:", error);
-        return res.status(500).json({
-            success: false,
-            message: "Error al crear proveedor",
-            error: error.message
-        });
+  try {
+    // Verificar que el cuerpo de la solicitud existe
+    if (!req.body || Object.keys(req.body).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "El cuerpo de la solicitud no puede estar vacío"
+      });
     }
+
+    // Validar datos requeridos
+    if (!req.body.name || !req.body.email) {
+      return res.status(400).json({
+        success: false,
+        message: "Nombre y email son campos requeridos"
+      });
+    }
+
+    // Crear nuevo proveedor
+    const supplier = new Supplier({
+      name: req.body.name,
+      contact: req.body.contact || "",
+      email: req.body.email,
+      phone: req.body.phone || "",
+      address: req.body.address || "",
+      products: req.body.products || [],
+      createdBy: req.userId
+    });
+
+    const savedSupplier = await supplier.save();
+
+    res.status(201).json({
+      success: true,
+      data: savedSupplier
+    });
+
+  } catch (error) {
+    console.error("Error en createSupplier:", error);
+    
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: "Error de validación",
+        error: error.message
+      });
+    }
+
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "El email ya está registrado"
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Error interno del servidor",
+      error: error.message
+    });
+  }
 };
+
 
 // Obtener todos los proveedores (todos los roles)
 exports.getAllSuppliers = async (req, res) => {
