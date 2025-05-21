@@ -48,15 +48,15 @@ const isCoordinator = (req, res, next) => {
   });
 };
 
-const isAssistant = (req, res, next) => {
-  if (req.user.role === "assistant") {
+const isAuxiliar = (req, res, next) => {
+  if (req.user.role === "auxiliar") {
     next();
     return;
   }
 
   res.status(403).send({
     success: false,
-    message: "Require Assistant Role!"
+    message: "Require Auxiliar Role!"
   });
 };
 
@@ -114,7 +114,7 @@ module.exports = {
   verifyToken,
   isAdmin,
   isCoordinator,
-  isAssistant,
+  isAuxiliar,
   verifyRole,
   verifySupplierToken
 };

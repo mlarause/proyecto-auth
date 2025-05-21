@@ -15,7 +15,7 @@ const supplierSchema = new Schema({
     email: {
         type: String,
         required: true,
-        unique: true,  // Only define index here
+        unique: true, // Single index definition
         trim: true,
         lowercase: true
     },
@@ -42,5 +42,4 @@ const supplierSchema = new Schema({
     versionKey: false
 });
 
-// Removed duplicate index definition - using only 'unique: true' above
 module.exports = mongoose.model('Supplier', supplierSchema);

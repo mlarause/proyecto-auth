@@ -1,7 +1,7 @@
 const Supplier = require('../models/Supplier');
 const Product = require('../models/Product');
 const jwt = require('jsonwebtoken');
-const config = require('../config/config');
+const config = require('../config/auth.config');
 
 // Helper function for role verification
 const checkAccess = (userRole, requiredRoles) => {
@@ -9,55 +9,13 @@ const checkAccess = (userRole, requiredRoles) => {
 };
 
 // Create Supplier (Admin only)
-exports.createSupplier = async (req, res) => {
-    try {
-        if (!checkAccess(req.user.role, ['admin'])) {
-            return res.status(403).json({ 
-                success: false, 
-                message: 'Require Admin Role!' 
-            });
-        }
+// Get supplier by ID (Admin, Coordinator, auxiliar)
 
-        const { name, contact, email, phone, address, products } = req.body;
-        
-        // Validate product IDs
-        if (products) {
-            const validProducts = await Product.find({ _id: { $in: products } });
-            if (validProducts.length !== products.length) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: 'One or more products not found' 
-                });
-            }
-        }
 
-        const supplier = new Supplier({ 
-            name, 
-            contact, 
-            email, 
-            phone, 
-            address, 
-            products 
-        });
-        
-        await supplier.save();
-
-        res.status(201).json({ 
-            success: true, 
-            data: supplier 
-        });
-    } catch (error) {
-        res.status(500).json({ 
-            success: false, 
-            message: error.message 
-        });
-    }
-};
-
-// Get All Suppliers (Admin, Coordinator, Assistant)
+// Get All Suppliers (Admin, Coordinator, auxiliar)
 exports.getSuppliers = async (req, res) => {
     try {
-        if (!checkAccess(req.user.role, ['admin', 'coordinator', 'assistant'])) {
+        if (!checkAccess(req.user.role, ['admin', 'coordinator', 'auxiliar'])) {
             return res.status(403).json({ 
                 success: false, 
                 message: 'Unauthorized access' 
@@ -79,7 +37,7 @@ exports.getSuppliers = async (req, res) => {
     }
 };
 
-// Get supplier by ID (Admin, Coordinator, Assistant)
+// Get supplier by ID (Admin, Coordinator, auxiliar)
 exports.getSupplierById = async (req, res) => {
     try {
         const supplier = await Supplier.findById(req.params.id);

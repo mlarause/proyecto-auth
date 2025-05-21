@@ -1,19 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const supplierController = require('../controllers/supplierController');
-const { verifyToken, verifyRole } = require('../middlewares/auth');
+const { verifyToken, verifyRole } = require('../../middlewares/auth'); // Adjusted path
 
-// Admin only routes
+// Admin routes
 router.post('/', 
     verifyToken, 
     verifyRole(['admin']), 
     supplierController.createSupplier
-);
-
-router.delete('/:id', 
-    verifyToken, 
-    verifyRole(['admin']), 
-    supplierController.deleteSupplier
 );
 
 // Admin & Coordinator routes
@@ -23,14 +17,14 @@ router.put('/:id',
     supplierController.updateSupplier
 );
 
-// All authenticated roles
+// All roles routes
 router.get('/', 
     verifyToken, 
-    verifyRole(['admin', 'coordinator', 'assistant']), 
+    verifyRole(['admin', 'coordinator', 'auxiliar']), 
     supplierController.getSuppliers
 );
 
-// Supplier token generation (public)
+// Public route for token generation
 router.post('/token', supplierController.generateSupplierToken);
 
 module.exports = router;
