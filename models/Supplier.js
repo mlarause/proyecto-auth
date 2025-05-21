@@ -4,18 +4,19 @@ const Schema = mongoose.Schema;
 const supplierSchema = new Schema({
   name: {
     type: String,
-    required: true,
+    required: [true, 'El nombre es requerido'],
     trim: true,
-    maxlength: 100
+    maxlength: [100, 'El nombre no puede exceder los 100 caracteres'],
+    minlength: [2, 'El nombre debe tener al menos 2 caracteres']
   },
   contact: {
     type: String,
-    required: true,
+    required: [true, 'El contacto es requerido'],
     trim: true
   },
   email: {
     type: String,
-    required: true,
+    required: [true, 'El email es requerido'],
     unique: true,
     trim: true,
     lowercase: true,
@@ -23,12 +24,12 @@ const supplierSchema = new Schema({
   },
   phone: {
     type: String,
-    required: true,
+    required: [true, 'El teléfono es requerido'],
     trim: true
   },
   address: {
     type: String,
-    required: true,
+    required: [true, 'La dirección es requerida'],
     trim: true
   },
   products: [{
@@ -41,12 +42,14 @@ const supplierSchema = new Schema({
     required: true
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  versionKey: false
 });
 
 // Índices para mejor performance
 supplierSchema.index({ name: 1 });
 supplierSchema.index({ email: 1 }, { unique: true });
+supplierSchema.index({ createdBy: 1 });
 
 const Supplier = mongoose.model('Supplier', supplierSchema);
 
