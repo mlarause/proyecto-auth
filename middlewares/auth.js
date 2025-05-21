@@ -36,15 +36,15 @@ const isAdmin = (req, res, next) => {
   });
 };
 
-const isCoordinator = (req, res, next) => {
-  if (req.user.role === "coordinator") {
+const isCoordinador = (req, res, next) => {
+  if (req.user.role === "coordinador") {
     next();
     return;
   }
 
   res.status(403).send({
     success: false,
-    message: "Require Coordinator Role!"
+    message: "Require Coordinador Role!"
   });
 };
 
@@ -113,7 +113,7 @@ const verifySupplierToken = (req, res, next) => {
 module.exports = {
   verifyToken,
   isAdmin,
-  isCoordinator,
+  isCoordinador,
   isAuxiliar,
   verifyRole,
   verifySupplierToken

@@ -8,14 +8,48 @@ const checkAccess = (userRole, requiredRoles) => {
     return requiredRoles.includes(userRole);
 };
 
-// Create Supplier (Admin only)
-// Get supplier by ID (Admin, Coordinator, auxiliar)
+exports.createSupplier = async (req, res) => {
+    try {
+        const { name, contact, email, phone, address, products } = req.body;
+        
+        // Validar productos si existen
+        if (products && products.length > 0) {
+            const validProducts = await Product.countDocuments({ _id: { $in: products } });
+            if (validProducts !== products.length) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Uno o más productos no existen'
+                });
+            }
+        }
 
+        const supplier = new Supplier({
+            name,
+            contact,
+            email,
+            phone,
+            address,
+            products: products || []
+        });
 
-// Get All Suppliers (Admin, Coordinator, auxiliar)
+        await supplier.save();
+
+        res.status(201).json({
+            success: true,
+            data: supplier
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+// Get All Suppliers (Admin, Coordinador, auxiliar)
 exports.getSuppliers = async (req, res) => {
     try {
-        if (!checkAccess(req.user.role, ['admin', 'coordinator', 'auxiliar'])) {
+        if (!checkAccess(req.user.role, ['admin', 'coordinador', 'auxiliar'])) {
             return res.status(403).json({ 
                 success: false, 
                 message: 'Unauthorized access' 
@@ -37,7 +71,7 @@ exports.getSuppliers = async (req, res) => {
     }
 };
 
-// Get supplier by ID (Admin, Coordinator, auxiliar)
+// Get supplier by ID (Admin, Coordinador, auxiliar)
 exports.getSupplierById = async (req, res) => {
     try {
         const supplier = await Supplier.findById(req.params.id);
@@ -50,7 +84,7 @@ exports.getSupplierById = async (req, res) => {
     }
 };
 
-// Update supplier (Admin, Coordinator)
+// Update supplier (Admin, Coordinador)
 exports.updateSupplier = async (req, res) => {
     try {
         const { name, email, phone, address } = req.body;

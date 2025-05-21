@@ -15,7 +15,7 @@ const supplierSchema = new Schema({
     email: {
         type: String,
         required: true,
-        unique: true, // Single index definition
+        unique: true, // Índice único aquí
         trim: true,
         lowercase: true
     },
@@ -42,4 +42,5 @@ const supplierSchema = new Schema({
     versionKey: false
 });
 
+module.exports = mongoose.model('Supplier', supplierSchema);
 module.exports = mongoose.model('Supplier', supplierSchema);
