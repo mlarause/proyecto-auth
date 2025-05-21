@@ -20,7 +20,7 @@ app.use('/api/suppliers', supplierRoutes);
 // Middlewares
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.json());
+
 app.use(express.urlencoded({ extended: true }));
 
 // Conexión a MongoDB actualizada (sin opciones obsoletas)

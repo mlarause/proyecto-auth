@@ -1,73 +1,72 @@
 const jwt = require('jsonwebtoken');
 const config = require('../config/auth.config');
 const db = require('../models');
-const User = db.user;
 
-verifyToken = (req, res, next) => {
-    let token = req.headers['x-access-token'] || req.headers['authorization'];
-    
-    if (!token) {
-        return res.status(403).json({
-            success: false,
-            message: "No se proporcionó token"
-        });
-    }
-
-    if (token.startsWith('Bearer ')) {
-        token = token.slice(7, token.length);
-    }
-
-    jwt.verify(token, config.secret, async (err, decoded) => {
-        if (err) {
-            return res.status(401).json({
-                success: false,
-                message: "Token inválido"
-            });
-        }
-
-        try {
-            const user = await User.findById(decoded.id).exec();
-            if (!user) {
-                return res.status(404).json({
-                    success: false,
-                    message: "Usuario no encontrado"
-                });
-            }
-            
-            req.userId = decoded.id;
-            next();
-        } catch (error) {
-            return res.status(500).json({
-                success: false,
-                message: "Error al verificar usuario"
-            });
-        }
+verifyToken = async (req, res, next) => {
+  const token = req.headers['x-access-token'];
+  
+  if (!token) {
+    return res.status(403).json({
+      success: false,
+      message: "No se proporcionó token"
     });
+  }
+
+  try {
+    const decoded = jwt.verify(token, config.secret);
+    const user = await db.user.findById(decoded.id).populate('roles').exec();
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Usuario no encontrado"
+      });
+    }
+    
+    req.userId = decoded.id;
+    req.userRoles = user.roles.map(role => role.name);
+    next();
+  } catch (error) {
+    console.error('Error en verifyToken:', error);
+    
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({
+        success: false,
+        message: "Token expirado"
+      });
+    }
+    
+    return res.status(401).json({
+      success: false,
+      message: "Token inválido"
+    });
+  }
 };
 
-isAdmin = async (req, res, next) => {
-    try {
-        const user = await User.findById(req.userId).exec();
-        const roles = await db.role.find({ _id: { $in: user.roles } });
+isAdmin = (req, res, next) => {
+  if (req.userRoles && req.userRoles.includes('admin')) {
+    return next();
+  }
+  res.status(403).json({
+    success: false,
+    message: "Se requieren privilegios de administrador"
+  });
+};
 
-        const isAdmin = roles.some(role => role.name === 'admin');
-        if (!isAdmin) {
-            return res.status(403).json({
-                success: false,
-                message: "Se requieren privilegios de administrador"
-            });
-        }
-
-        next();
-    } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: "Error al verificar roles"
-        });
+checkRoles = (allowedRoles) => {
+  return (req, res, next) => {
+    if (req.userRoles && req.userRoles.some(role => allowedRoles.includes(role))) {
+      return next();
     }
+    res.status(403).json({
+      success: false,
+      message: "No tienes los permisos necesarios"
+    });
+  };
 };
 
 module.exports = {
-    verifyToken,
-    isAdmin
+  verifyToken,
+  isAdmin,
+  checkRoles
 };

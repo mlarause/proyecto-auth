@@ -1,43 +1,30 @@
-const db = require("../models");
-const Supplier = db.supplier;
-const Product = db.product;
-const User = db.user;
-const Role = db.role;
+const mongoose = require('mongoose');
+const User = mongoose.model('User');
+const Supplier = mongoose.model('Supplier');
+const Product = mongoose.model('Product');
 
 // Función para verificar permisos
-const checkPermissions = async (userId, requiredPermission) => {
-  const user = await User.findById(userId).populate('roles');
-  if (!user) return false;
+const checkSupplierPermission = async (userId, action) => {
+  try {
+    const user = await User.findById(userId).populate('roles').exec();
+    if (!user) return false;
 
-  const roles = user.roles.map(role => role.name);
+    const roles = user.roles.map(role => role.name);
 
-  if (roles.includes('admin')) return true;
-  if (requiredPermission === 'read' && roles.includes('auxiliar')) return true;
-  if (requiredPermission !== 'delete' && roles.includes('coordinador')) return true;
-
-  return false;
+    if (roles.includes('admin')) return true;
+    if (action === 'read') return true;
+    if (roles.includes('coordinador') && action !== 'delete') return true;
+    
+    return false;
+  } catch (error) {
+    console.error("Error verificando permisos:", error);
+    return false;
+  }
 };
 
 // Crear proveedor (Admin y Coordinador)
 exports.createSupplier = async (req, res) => {
   try {
-    // Verificar que el cuerpo de la solicitud existe
-    if (!req.body || Object.keys(req.body).length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "El cuerpo de la solicitud no puede estar vacío"
-      });
-    }
-
-    // Validar datos requeridos
-    if (!req.body.name || !req.body.email) {
-      return res.status(400).json({
-        success: false,
-        message: "Nombre y email son campos requeridos"
-      });
-    }
-
-    // Crear nuevo proveedor
     const supplier = new Supplier({
       name: req.body.name,
       contact: req.body.contact || "",
@@ -49,46 +36,34 @@ exports.createSupplier = async (req, res) => {
     });
 
     const savedSupplier = await supplier.save();
-
+    
     res.status(201).json({
       success: true,
-      data: savedSupplier
+      data: savedSupplier,
+      message: "Proveedor creado exitosamente"
     });
-
   } catch (error) {
-    console.error("Error en createSupplier:", error);
-    
-    if (error.name === 'ValidationError') {
-      return res.status(400).json({
-        success: false,
-        message: "Error de validación",
-        error: error.message
-      });
-    }
-
     if (error.code === 11000) {
-      return res.status(409).json({
+      return res.status(400).json({
         success: false,
         message: "El email ya está registrado"
       });
     }
-
     res.status(500).json({
       success: false,
-      message: "Error interno del servidor",
-      error: error.message
+      message: "Error al crear proveedor"
     });
   }
 };
-
 
 // Obtener todos los proveedores (todos los roles)
 exports.getAllSuppliers = async (req, res) => {
   try {
     const suppliers = await Supplier.find()
       .populate('products', 'name price')
-      .populate('createdBy', 'username');
-      
+      .populate('createdBy', 'username')
+      .exec();
+
     res.status(200).json({
       success: true,
       data: suppliers
@@ -96,26 +71,26 @@ exports.getAllSuppliers = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error al obtener proveedores",
-      error: error.message
+      message: "Error al obtener proveedores"
     });
   }
 };
 
-// Obtener un proveedor por ID (todos los roles)
+// Obtener proveedor por ID (todos los roles)
 exports.getSupplierById = async (req, res) => {
   try {
     const supplier = await Supplier.findById(req.params.id)
-      .populate('products')
-      .populate('createdBy', 'username');
-    
+      .populate('products', 'name price')
+      .populate('createdBy', 'username')
+      .exec();
+
     if (!supplier) {
       return res.status(404).json({
         success: false,
         message: "Proveedor no encontrado"
       });
     }
-    
+
     res.status(200).json({
       success: true,
       data: supplier
@@ -123,8 +98,7 @@ exports.getSupplierById = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error al obtener proveedor",
-      error: error.message
+      message: "Error al obtener proveedor"
     });
   }
 };
@@ -132,25 +106,6 @@ exports.getSupplierById = async (req, res) => {
 // Actualizar proveedor (Admin y Coordinador)
 exports.updateSupplier = async (req, res) => {
   try {
-    const hasPermission = await checkPermissions(req.userId, 'update');
-    if (!hasPermission) {
-      return res.status(403).json({
-        success: false,
-        message: "No tienes permisos para actualizar proveedores"
-      });
-    }
-
-    // Validar productos si se actualizan
-    if (req.body.products) {
-      const products = await Product.find({ _id: { $in: req.body.products } });
-      if (products.length !== req.body.products.length) {
-        return res.status(400).json({
-          success: false,
-          message: "Algunos productos no existen"
-        });
-      }
-    }
-
     const updatedSupplier = await Supplier.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -178,8 +133,7 @@ exports.updateSupplier = async (req, res) => {
     }
     res.status(500).json({
       success: false,
-      message: "Error al actualizar proveedor",
-      error: error.message
+      message: "Error al actualizar proveedor"
     });
   }
 };
@@ -187,14 +141,6 @@ exports.updateSupplier = async (req, res) => {
 // Eliminar proveedor (Solo Admin)
 exports.deleteSupplier = async (req, res) => {
   try {
-    const hasPermission = await checkPermissions(req.userId, 'delete');
-    if (!hasPermission) {
-      return res.status(403).json({
-        success: false,
-        message: "Solo los administradores pueden eliminar proveedores"
-      });
-    }
-
     const deletedSupplier = await Supplier.findByIdAndDelete(req.params.id);
     
     if (!deletedSupplier) {
@@ -211,8 +157,7 @@ exports.deleteSupplier = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error al eliminar proveedor",
-      error: error.message
+      message: "Error al eliminar proveedor"
     });
   }
 };
