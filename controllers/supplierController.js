@@ -1,7 +1,7 @@
 const Supplier = require('../models/Supplier');
 const Product = require('../models/Product');
 const jwt = require('jsonwebtoken');
-const config = require('../config/config');
+const config = require('../config/auth.config');
 
 // Create a new supplier (Admin only)
 exports.createSupplier = async (req, res) => {

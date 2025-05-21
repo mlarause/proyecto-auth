@@ -1,74 +1,128 @@
 const jwt = require("jsonwebtoken");
 const config = require("../config/auth.config");
-const db = require("../models");
-const User = db.user;
 
-verifyToken = (req, res, next) => {
-  let token = req.headers["x-access-token"];
-
+const verifyToken = (req, res, next) => {
+  const token = req.headers["x-access-token"] || req.headers["authorization"];
+  
   if (!token) {
-    return res.status(403).json({ 
+    return res.status(403).send({
       success: false,
-      message: "No se proporcionó token" 
+      message: "No token provided!"
     });
   }
 
-  jwt.verify(token, config.secret, async (err, decoded) => {
-    if (err) {
-      return res.status(401).json({
+  try {
+    const decoded = jwt.verify(token.replace('Bearer ', ''), config.jwtSecret);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).send({
         success: false,
-        message: "Token inválido o expirado"
+        message: "Token expired",
+        expiredAt: err.expiredAt
       });
     }
-    
-    try {
-      // Cambio crucial: findByPk -> findById (Mongoose)
-      const user = await User.findById(decoded.id).exec();
-      
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: "Usuario no encontrado"
-        });
-      }
-      
-      req.userId = decoded.id;
-      next();
-    } catch (error) {
-      return res.status(500).json({
-        success: false,
-        message: "Error al verificar usuario"
-      });
-    }
+    return res.status(401).send({
+      success: false,
+      message: "Unauthorized!"
+    });
+  }
+};
+
+const isAdmin = (req, res, next) => {
+  if (req.user.role === "admin") {
+    next();
+    return;
+  }
+
+  res.status(403).send({
+    success: false,
+    message: "Require Admin Role!"
   });
 };
 
-isAdmin = async (req, res, next) => {
-  try {
-    const user = await User.findById(req.userId).exec();
-    const roles = await db.role.find({ _id: { $in: user.roles } });
+const isCoordinator = (req, res, next) => {
+  if (req.user.role === "coordinator") {
+    next();
+    return;
+  }
 
-    for (let i = 0; i < roles.length; i++) {
-      if (roles[i].name === "admin") {
-        return next();
-      }
+  res.status(403).send({
+    success: false,
+    message: "Require Coordinator Role!"
+  });
+};
+
+const isAssistant = (req, res, next) => {
+  if (req.user.role === "assistant") {
+    next();
+    return;
+  }
+
+  res.status(403).send({
+    success: false,
+    message: "Require Assistant Role!"
+  });
+};
+
+const verifyRole = (allowedRoles) => {
+  return (req, res, next) => {
+    if (allowedRoles.includes(req.user.role)) {
+      next();
+      return;
     }
 
-    res.status(403).json({
+    res.status(403).send({
       success: false,
-      message: "Requiere rol de Administrador"
+      message: `Require one of these roles: ${allowedRoles.join(', ')}`
     });
-  } catch (err) {
-    res.status(500).json({
+  };
+};
+
+// Función específica para proveedores (suppliers)
+const verifySupplierToken = (req, res, next) => {
+  const token = req.headers["x-access-token"] || req.headers["authorization"];
+  
+  if (!token) {
+    return res.status(403).send({
       success: false,
-      message: err.message
+      message: "No token provided!"
+    });
+  }
+
+  try {
+    const decoded = jwt.verify(token.replace('Bearer ', ''), config.jwtSecret);
+    
+    if (decoded.role !== 'supplier') {
+      return res.status(403).send({
+        success: false,
+        message: "Invalid token for supplier"
+      });
+    }
+    
+    req.supplier = decoded;
+    next();
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).send({
+        success: false,
+        message: "Supplier token expired",
+        expiredAt: err.expiredAt
+      });
+    }
+    return res.status(401).send({
+      success: false,
+      message: "Unauthorized supplier token!"
     });
   }
 };
 
-const authJwt = {
+module.exports = {
   verifyToken,
-  isAdmin
+  isAdmin,
+  isCoordinator,
+  isAssistant,
+  verifyRole,
+  verifySupplierToken
 };
-
-module.exports = authJwt;
