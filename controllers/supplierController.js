@@ -21,11 +21,11 @@ const checkPermissions = async (userId, requiredPermission) => {
 // Crear proveedor (Admin y Coordinador)
 exports.createSupplier = async (req, res) => {
     try {
-        // Validar campos requeridos
+        // Validación de datos
         if (!req.body.name || !req.body.email) {
             return res.status(400).json({
                 success: false,
-                message: "Nombre y email son obligatorios"
+                message: "Nombre y email son requeridos"
             });
         }
 
@@ -64,7 +64,7 @@ exports.createSupplier = async (req, res) => {
 
         const savedSupplier = await newSupplier.save();
 
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             data: savedSupplier,
             message: "Proveedor creado exitosamente"
@@ -72,7 +72,7 @@ exports.createSupplier = async (req, res) => {
 
     } catch (error) {
         console.error("Error en createSupplier:", error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: "Error al crear proveedor",
             error: error.message
