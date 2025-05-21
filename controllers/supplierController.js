@@ -1,206 +1,112 @@
-const db = require("../models");
+const Supplier = require('../models/Supplier');
+const Product = require('../models/Product');
+const jwt = require('jsonwebtoken');
+const config = require('../config/config');
 
-// Función para verificar permisos mejorada
-const checkSupplierPermission = async (userId, action) => {
-  try {
-    const user = await db.User.findById(userId)
-      .populate({
-        path: 'roles',
-        options: { strictPopulate: false }
-      })
-      .exec();
-      
-    if (!user) return false;
-
-    const roleNames = user.roles.map(role => role.name);
-
-    if (roleNames.includes('admin')) return true;
-    if (action === 'read') return true;
-    if (roleNames.includes('coordinador') && action !== 'delete') return true;
-    
-    return false;
-  } catch (error) {
-    console.error("Error verificando permisos:", error);
-    return false;
-  }
-};
-
-// Crear proveedor (Admin y Coordinador)
+// Create a new supplier (Admin only)
 exports.createSupplier = async (req, res) => {
-  try {
-    const canCreate = await checkSupplierPermission(req.userId, 'create');
-    if (!canCreate) {
-      return res.status(403).json({ 
-        success: false,
-        message: "No tienes permisos para crear proveedores" 
-      });
-    }
+    try {
+        const { name, email, phone, address } = req.body;
+        
+        // Check if supplier exists
+        const existingSupplier = await Supplier.findOne({ email });
+        if (existingSupplier) {
+            return res.status(400).json({ success: false, message: 'Supplier already exists' });
+        }
 
-    const supplier = new db.Supplier({
-      name: req.body.name,
-      contact: req.body.contact || "",
-      email: req.body.email,
-      phone: req.body.phone || "",
-      address: req.body.address || "",
-      products: req.body.products || [],
-      createdBy: req.userId
-    });
+        const supplier = new Supplier({ name, email, phone, address });
+        await supplier.save();
 
-    const savedSupplier = await supplier.save();
-    
-    return res.status(201).json({
-      success: true,
-      data: savedSupplier,
-      message: "Proveedor creado exitosamente"
-    });
-  } catch (error) {
-    if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: "El email ya está registrado"
-      });
+        res.status(201).json({ success: true, data: supplier });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
     }
-    return res.status(500).json({
-      success: false,
-      message: "Error al crear proveedor"
-    });
-  }
 };
 
-// Obtener todos los proveedores (todos los roles)
+// Get all suppliers (Admin, Coordinator, Assistant)
 exports.getAllSuppliers = async (req, res) => {
-  try {
-    const hasPermission = await checkSupplierPermission(req.userId, 'read');
-    if (!hasPermission) {
-      return res.status(403).json({
-        success: false,
-        message: "No tienes permisos para ver proveedores"
-      });
+    try {
+        const suppliers = await Supplier.find();
+        res.status(200).json({ success: true, data: suppliers });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
     }
-
-    const suppliers = await db.Supplier.find()
-      .populate('products', 'name price')
-      .populate('createdBy', 'username')
-      .exec();
-
-    return res.status(200).json({
-      success: true,
-      data: suppliers
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Error al obtener proveedores"
-    });
-  }
 };
 
-// Obtener proveedor por ID (todos los roles)
+// Get supplier by ID (Admin, Coordinator, Assistant)
 exports.getSupplierById = async (req, res) => {
-  try {
-    const hasPermission = await checkSupplierPermission(req.userId, 'read');
-    if (!hasPermission) {
-      return res.status(403).json({
-        success: false,
-        message: "No tienes permisos para ver este proveedor"
-      });
+    try {
+        const supplier = await Supplier.findById(req.params.id);
+        if (!supplier) {
+            return res.status(404).json({ success: false, message: 'Supplier not found' });
+        }
+        res.status(200).json({ success: true, data: supplier });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
     }
-
-    const supplier = await db.Supplier.findById(req.params.id)
-      .populate('products', 'name price')
-      .populate('createdBy', 'username')
-      .exec();
-
-    if (!supplier) {
-      return res.status(404).json({
-        success: false,
-        message: "Proveedor no encontrado"
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      data: supplier
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Error al obtener proveedor"
-    });
-  }
 };
 
-// Actualizar proveedor (Admin y Coordinador)
+// Update supplier (Admin, Coordinator)
 exports.updateSupplier = async (req, res) => {
-  try {
-    const canUpdate = await checkSupplierPermission(req.userId, 'update');
-    if (!canUpdate) {
-      return res.status(403).json({
-        success: false,
-        message: "No tienes permisos para actualizar proveedores"
-      });
-    }
+    try {
+        const { name, email, phone, address } = req.body;
+        const supplier = await Supplier.findByIdAndUpdate(
+            req.params.id,
+            { name, email, phone, address },
+            { new: true, runValidators: true }
+        );
 
-    const updatedSupplier = await db.Supplier.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    ).populate('products');
+        if (!supplier) {
+            return res.status(404).json({ success: false, message: 'Supplier not found' });
+        }
 
-    if (!updatedSupplier) {
-      return res.status(404).json({
-        success: false,
-        message: "Proveedor no encontrado"
-      });
+        res.status(200).json({ success: true, data: supplier });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
     }
-
-    return res.status(200).json({
-      success: true,
-      data: updatedSupplier,
-      message: "Proveedor actualizado exitosamente"
-    });
-  } catch (error) {
-    if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: "El email ya está registrado"
-      });
-    }
-    return res.status(500).json({
-      success: false,
-      message: "Error al actualizar proveedor"
-    });
-  }
 };
 
-// Eliminar proveedor (Solo Admin)
+// Delete supplier (Admin only)
 exports.deleteSupplier = async (req, res) => {
-  try {
-    const canDelete = await checkSupplierPermission(req.userId, 'delete');
-    if (!canDelete) {
-      return res.status(403).json({
-        success: false,
-        message: "No tienes permisos para eliminar proveedores"
-      });
-    }
+    try {
+        // Check if supplier has associated products
+        const products = await Product.find({ supplier: req.params.id });
+        if (products.length > 0) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Cannot delete supplier with associated products' 
+            });
+        }
 
-    const deletedSupplier = await db.Supplier.findByIdAndDelete(req.params.id);
-    
-    if (!deletedSupplier) {
-      return res.status(404).json({
-        success: false,
-        message: "Proveedor no encontrado"
-      });
+        const supplier = await Supplier.findByIdAndDelete(req.params.id);
+        if (!supplier) {
+            return res.status(404).json({ success: false, message: 'Supplier not found' });
+        }
+
+        res.status(200).json({ success: true, message: 'Supplier deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
     }
-    
-    return res.status(200).json({
-      success: true,
-      message: "Proveedor eliminado exitosamente"
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Error al eliminar proveedor"
-    });
-  }
+};
+
+// Generate supplier token
+exports.generateSupplierToken = async (req, res) => {
+    try {
+        const { email } = req.body;
+        const supplier = await Supplier.findOne({ email });
+        
+        if (!supplier) {
+            return res.status(404).json({ success: false, message: 'Supplier not found' });
+        }
+
+        const token = jwt.sign(
+            { id: supplier._id, email: supplier.email, role: 'supplier' },
+            config.jwtSecret,
+            { expiresIn: '24h' } // Increased expiration time
+        );
+
+        res.status(200).json({ success: true, token });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
 };

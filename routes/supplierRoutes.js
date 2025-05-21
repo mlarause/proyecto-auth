@@ -1,140 +1,20 @@
 const express = require('express');
 const router = express.Router();
-const jwt = require('jsonwebtoken');
-const db = require('../models');
-const config = require('../config/auth.config');
 const supplierController = require('../controllers/supplierController');
-const { body, validationResult } = require('express-validator');
+const { verifyToken, verifyRole } = require('../middlewares/auth');
 
-// Middleware de verificación de token mejorado
-const verifySupplierToken = async (req, res, next) => {
-  const token = req.headers['x-access-token'] || req.headers['authorization'];
-  
-  if (!token) {
-    return res.status(403).json({ 
-      success: false,
-      message: "Token de autenticación requerido" 
-    });
-  }
+// Admin routes
+router.post('/', verifyToken, verifyRole(['admin']), supplierController.createSupplier);
+router.delete('/:id', verifyToken, verifyRole(['admin']), supplierController.deleteSupplier);
 
-  try {
-    const formattedToken = token.startsWith('Bearer ') ? token.slice(7) : token;
-    const decoded = jwt.verify(formattedToken, config.secret);
-    
-    // Populate con opción strictPopulate: false
-    const user = await db.User.findById(decoded.id)
-      .populate({
-        path: 'roles',
-        options: { strictPopulate: false }
-      })
-      .exec();
-    
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "Usuario no encontrado"
-      });
-    }
-    
-    req.userId = decoded.id;
-    req.userRoles = user.roles.map(role => role.name);
-    next();
-  } catch (error) {
-    console.error('Error en verificación de token:', error);
-    
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({
-        success: false,
-        message: "Token expirado"
-      });
-    }
-    
-    return res.status(401).json({
-      success: false,
-      message: "Token inválido"
-    });
-  }
-};
+// Admin and Coordinator routes
+router.put('/:id', verifyToken, verifyRole(['admin', 'coordinator']), supplierController.updateSupplier);
 
-// Middleware de validación
-const validateSupplier = [
-  body('name')
-    .notEmpty().withMessage('El nombre es requerido')
-    .isLength({ max: 100 }).withMessage('Máximo 100 caracteres'),
-  
-  body('email')
-    .notEmpty().withMessage('El email es requerido')
-    .isEmail().withMessage('Email inválido'),
-    
-  body('products')
-    .optional()
-    .isArray().withMessage('Debe ser un arreglo de IDs'),
-    
-  (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        errors: errors.array()
-      });
-    }
-    next();
-  }
-];
+// Admin, Coordinator and Assistant routes
+router.get('/', verifyToken, verifyRole(['admin', 'coordinator', 'assistant']), supplierController.getAllSuppliers);
+router.get('/:id', verifyToken, verifyRole(['admin', 'coordinator', 'assistant']), supplierController.getSupplierById);
 
-// Rutas para proveedores
-router.post('/', 
-  verifySupplierToken,
-  (req, res, next) => {
-    if (req.userRoles.includes('admin') || req.userRoles.includes('coordinador')) {
-      return next();
-    }
-    res.status(403).json({
-      success: false,
-      message: "Requiere rol de administrador o coordinador"
-    });
-  },
-  validateSupplier,
-  supplierController.createSupplier
-);
-
-router.get('/', 
-  verifySupplierToken,
-  supplierController.getAllSuppliers
-);
-
-router.get('/:id', 
-  verifySupplierToken,
-  supplierController.getSupplierById
-);
-
-router.put('/:id', 
-  verifySupplierToken,
-  (req, res, next) => {
-    if (req.userRoles.includes('admin') || req.userRoles.includes('coordinador')) {
-      return next();
-    }
-    res.status(403).json({
-      success: false,
-      message: "Requiere rol de administrador o coordinador"
-    });
-  },
-  validateSupplier,
-  supplierController.updateSupplier
-);
-
-router.delete('/:id', 
-  verifySupplierToken,
-  (req, res, next) => {
-    if (req.userRoles.includes('admin')) {
-      return next();
-    }
-    res.status(403).json({
-      success: false,
-      message: "Requiere rol de administrador"
-    });
-  },
-  supplierController.deleteSupplier
-);
+// Supplier token generation (public route)
+router.post('/token', supplierController.generateSupplierToken);
 
 module.exports = router;
