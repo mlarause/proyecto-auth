@@ -5,7 +5,8 @@ const supplierSchema = new Schema({
   name: {
     type: String,
     required: true,
-    trim: true
+    trim: true,
+    maxlength: 100
   },
   contact: {
     type: String,
@@ -17,7 +18,8 @@ const supplierSchema = new Schema({
     required: true,
     unique: true,
     trim: true,
-    lowercase: true
+    lowercase: true,
+    match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Por favor ingrese un email válido']
   },
   phone: {
     type: String,
@@ -37,22 +39,14 @@ const supplierSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'User',
     required: true
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
   }
+}, {
+  timestamps: true
 });
 
-// Middleware para actualizar la fecha de modificación
-supplierSchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  next();
-});
+// Índices para mejor performance
+supplierSchema.index({ name: 1 });
+supplierSchema.index({ email: 1 }, { unique: true });
 
 const Supplier = mongoose.model('Supplier', supplierSchema);
 

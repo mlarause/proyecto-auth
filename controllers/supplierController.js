@@ -1,15 +1,8 @@
 const db = require("../models");
 const Supplier = db.supplier;
-const User = db.user;
 
-exports.createSupplier = async (req, res) => {
+exports.create = async (req, res) => {
   try {
-    // Verificar si el usuario existe
-    const user = await User.findById(req.userId);
-    if (!user) {
-      return res.status(404).json({ message: "Usuario no encontrado." });
-    }
-
     const supplier = new Supplier({
       name: req.body.name,
       contact: req.body.contact,
@@ -20,60 +13,64 @@ exports.createSupplier = async (req, res) => {
       createdBy: req.userId
     });
 
-    await supplier.save();
-    res.status(201).json(supplier);
+    const savedSupplier = await supplier.save();
+    res.status(201).send(savedSupplier);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).send({ message: err.message });
   }
 };
 
-exports.getAllSuppliers = async (req, res) => {
+exports.findAll = async (req, res) => {
   try {
-    const suppliers = await Supplier.find().populate('products', 'name description');
-    res.status(200).json(suppliers);
+    const suppliers = await Supplier.find().populate('products', 'name');
+    res.status(200).send(suppliers);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).send({ message: err.message });
   }
 };
 
-exports.getSupplierById = async (req, res) => {
+exports.findOne = async (req, res) => {
   try {
     const supplier = await Supplier.findById(req.params.id).populate('products', 'name description');
+    
     if (!supplier) {
-      return res.status(404).json({ message: "Proveedor no encontrado." });
+      return res.status(404).send({ message: "Proveedor no encontrado" });
     }
-    res.status(200).json(supplier);
+    
+    res.status(200).send(supplier);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).send({ message: err.message });
   }
 };
 
-exports.updateSupplier = async (req, res) => {
+exports.update = async (req, res) => {
   try {
     const updatedSupplier = await Supplier.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true }
     );
-    
+
     if (!updatedSupplier) {
-      return res.status(404).json({ message: "Proveedor no encontrado." });
+      return res.status(404).send({ message: "Proveedor no encontrado" });
     }
-    
-    res.status(200).json(updatedSupplier);
+
+    res.status(200).send(updatedSupplier);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).send({ message: err.message });
   }
 };
 
-exports.deleteSupplier = async (req, res) => {
+exports.delete = async (req, res) => {
   try {
-    const deletedSupplier = await Supplier.findByIdAndDelete(req.params.id);
+    const deletedSupplier = await Supplier.findByIdAndRemove(req.params.id);
+    
     if (!deletedSupplier) {
-      return res.status(404).json({ message: "Proveedor no encontrado." });
+      return res.status(404).send({ message: "Proveedor no encontrado" });
     }
-    res.status(200).json({ message: "Proveedor eliminado exitosamente." });
+    
+    res.status(200).send({ message: "Proveedor eliminado exitosamente" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).send({ message: err.message });
   }
 };
