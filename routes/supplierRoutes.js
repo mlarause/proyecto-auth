@@ -16,7 +16,7 @@ const validateSupplier = [
     .notEmpty().withMessage('El email es requerido')
     .isEmail().withMessage('Email inválido')
     .custom(async (value, { req }) => {
-      const existing = await db.supplier.findOne({ email: value });
+      const existing = await db.Supplier.findOne({ email: value });
       if (existing && existing._id.toString() !== req.params?.id) {
         throw new Error('Email ya registrado');
       }
@@ -28,7 +28,7 @@ const validateSupplier = [
     .isArray().withMessage('Debe ser un arreglo de IDs')
     .custom(async (products) => {
       if (products && products.length > 0) {
-        const count = await db.product.countDocuments({ _id: { $in: products } });
+        const count = await db.Product.countDocuments({ _id: { $in: products } });
         if (count !== products.length) {
           throw new Error('Algunos productos no existen');
         }
@@ -55,14 +55,17 @@ const verifySupplierToken = async (req, res, next) => {
   if (!token) {
     return res.status(403).json({ 
       success: false,
-      message: "Token de autenticación requerido para proveedores" 
+      message: "Token de autenticación requerido" 
     });
   }
 
   try {
     const formattedToken = token.startsWith('Bearer ') ? token.slice(7) : token;
     const decoded = jwt.verify(formattedToken, config.secret);
-    const user = await db.user.findById(decoded.id).populate('roles').exec();
+    
+    const user = await db.User.findById(decoded.id)
+      .populate('roles')
+      .exec();
     
     if (!user) {
       return res.status(404).json({
@@ -75,7 +78,7 @@ const verifySupplierToken = async (req, res, next) => {
     req.userRoles = user.roles.map(role => role.name);
     next();
   } catch (error) {
-    console.error('Error en verificación de token (Suppliers):', error);
+    console.error('Error en verificación de token:', error);
     
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({

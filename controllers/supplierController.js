@@ -1,19 +1,19 @@
-const mongoose = require('mongoose');
-const User = mongoose.model('User');
-const Supplier = mongoose.model('Supplier');
-const Product = mongoose.model('Product');
+const db = require("../models");
 
 // Función para verificar permisos
 const checkSupplierPermission = async (userId, action) => {
   try {
-    const user = await User.findById(userId).populate('roles').exec();
+    const user = await db.User.findById(userId)
+      .populate('roles')
+      .exec();
+      
     if (!user) return false;
 
-    const roles = user.roles.map(role => role.name);
+    const roleNames = user.roles.map(role => role.name);
 
-    if (roles.includes('admin')) return true;
+    if (roleNames.includes('admin')) return true;
     if (action === 'read') return true;
-    if (roles.includes('coordinador') && action !== 'delete') return true;
+    if (roleNames.includes('coordinador') && action !== 'delete') return true;
     
     return false;
   } catch (error) {
@@ -25,7 +25,15 @@ const checkSupplierPermission = async (userId, action) => {
 // Crear proveedor (Admin y Coordinador)
 exports.createSupplier = async (req, res) => {
   try {
-    const supplier = new Supplier({
+    const canCreate = await checkSupplierPermission(req.userId, 'create');
+    if (!canCreate) {
+      return res.status(403).json({ 
+        success: false,
+        message: "No tienes permisos para esta acción" 
+      });
+    }
+
+    const supplier = new db.Supplier({
       name: req.body.name,
       contact: req.body.contact || "",
       email: req.body.email,
@@ -37,7 +45,7 @@ exports.createSupplier = async (req, res) => {
 
     const savedSupplier = await supplier.save();
     
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       data: savedSupplier,
       message: "Proveedor creado exitosamente"
@@ -49,7 +57,7 @@ exports.createSupplier = async (req, res) => {
         message: "El email ya está registrado"
       });
     }
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Error al crear proveedor"
     });
@@ -59,17 +67,25 @@ exports.createSupplier = async (req, res) => {
 // Obtener todos los proveedores (todos los roles)
 exports.getAllSuppliers = async (req, res) => {
   try {
-    const suppliers = await Supplier.find()
+    const hasPermission = await checkSupplierPermission(req.userId, 'read');
+    if (!hasPermission) {
+      return res.status(403).json({
+        success: false,
+        message: "No tienes permisos para ver proveedores"
+      });
+    }
+
+    const suppliers = await db.Supplier.find()
       .populate('products', 'name price')
       .populate('createdBy', 'username')
       .exec();
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: suppliers
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Error al obtener proveedores"
     });
@@ -79,7 +95,15 @@ exports.getAllSuppliers = async (req, res) => {
 // Obtener proveedor por ID (todos los roles)
 exports.getSupplierById = async (req, res) => {
   try {
-    const supplier = await Supplier.findById(req.params.id)
+    const hasPermission = await checkSupplierPermission(req.userId, 'read');
+    if (!hasPermission) {
+      return res.status(403).json({
+        success: false,
+        message: "No tienes permisos para ver este proveedor"
+      });
+    }
+
+    const supplier = await db.Supplier.findById(req.params.id)
       .populate('products', 'name price')
       .populate('createdBy', 'username')
       .exec();
@@ -91,12 +115,12 @@ exports.getSupplierById = async (req, res) => {
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: supplier
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Error al obtener proveedor"
     });
@@ -106,7 +130,15 @@ exports.getSupplierById = async (req, res) => {
 // Actualizar proveedor (Admin y Coordinador)
 exports.updateSupplier = async (req, res) => {
   try {
-    const updatedSupplier = await Supplier.findByIdAndUpdate(
+    const canUpdate = await checkSupplierPermission(req.userId, 'update');
+    if (!canUpdate) {
+      return res.status(403).json({
+        success: false,
+        message: "No tienes permisos para actualizar proveedores"
+      });
+    }
+
+    const updatedSupplier = await db.Supplier.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true, runValidators: true }
@@ -119,7 +151,7 @@ exports.updateSupplier = async (req, res) => {
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: updatedSupplier,
       message: "Proveedor actualizado exitosamente"
@@ -131,7 +163,7 @@ exports.updateSupplier = async (req, res) => {
         message: "El email ya está registrado"
       });
     }
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Error al actualizar proveedor"
     });
@@ -141,7 +173,15 @@ exports.updateSupplier = async (req, res) => {
 // Eliminar proveedor (Solo Admin)
 exports.deleteSupplier = async (req, res) => {
   try {
-    const deletedSupplier = await Supplier.findByIdAndDelete(req.params.id);
+    const canDelete = await checkSupplierPermission(req.userId, 'delete');
+    if (!canDelete) {
+      return res.status(403).json({
+        success: false,
+        message: "No tienes permisos para eliminar proveedores"
+      });
+    }
+
+    const deletedSupplier = await db.Supplier.findByIdAndDelete(req.params.id);
     
     if (!deletedSupplier) {
       return res.status(404).json({
@@ -150,12 +190,12 @@ exports.deleteSupplier = async (req, res) => {
       });
     }
     
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Proveedor eliminado exitosamente"
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Error al eliminar proveedor"
     });
