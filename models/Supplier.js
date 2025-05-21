@@ -1,18 +1,18 @@
 const mongoose = require('mongoose');
-const { Schema } = mongoose;
+const Schema = mongoose.Schema;
 
 const supplierSchema = new Schema({
     name: {
         type: String,
-        required: [true, 'Supplier name is required'],
+        required: true,
         trim: true,
-        minlength: [2, 'Supplier name must be at least 2 characters'],
-        maxlength: [100, 'Supplier name cannot exceed 100 characters']
+        minlength: 2,
+        maxlength: 100
     },
     email: {
         type: String,
-        required: [true, 'Email is required'],
-        unique: true,
+        required: true,
+        unique: true,  // Esto crea un índice único automáticamente
         trim: true,
         lowercase: true,
         match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
@@ -28,37 +28,9 @@ const supplierSchema = new Schema({
         }
     },
     address: {
-        street: {
-            type: String,
-            trim: true,
-            maxlength: [100, 'Street address cannot exceed 100 characters']
-        },
-        city: {
-            type: String,
-            trim: true,
-            maxlength: [50, 'City name cannot exceed 50 characters']
-        },
-        state: {
-            type: String,
-            trim: true,
-            maxlength: [50, 'State name cannot exceed 50 characters']
-        },
-        zipCode: {
-            type: String,
-            trim: true,
-            validate: {
-                validator: function(v) {
-                    return /^\d{5}(?:[-\s]\d{4})?$/.test(v);
-                },
-                message: props => `${props.value} is not a valid ZIP code!`
-            }
-        },
-        country: {
-            type: String,
-            trim: true,
-            default: 'United States',
-            maxlength: [50, 'Country name cannot exceed 50 characters']
-        }
+        type: String,
+        trim: true,
+        maxlength: 200
     },
     isActive: {
         type: Boolean,
@@ -77,32 +49,7 @@ const supplierSchema = new Schema({
     versionKey: false
 });
 
-// Custom validation to ensure at least one contact method
-supplierSchema.pre('validate', function(next) {
-    if (!this.email && !this.phone) {
-        this.invalidate('contact', 'At least email or phone must be provided', this.contact);
-    }
-    next();
-});
-
-// Single index definition to avoid duplicate warning
-supplierSchema.index({ email: 1 }, { unique: true });
-supplierSchema.index({ name: 1 }); // For faster searching by name
-
-// Middleware to update the updatedAt field
-supplierSchema.pre('save', function(next) {
-    this.updatedAt = Date.now();
-    next();
-});
-
-// Static method to find active suppliers
-supplierSchema.statics.findActive = function() {
-    return this.find({ isActive: true });
-};
-
-// Instance method to get supplier info
-supplierSchema.methods.getInfo = function() {
-    return `${this.name} - ${this.email} (${this.phone})`;
-};
+// Eliminé la línea schema.index() duplicada que causaba la advertencia
+// El índice único ya está definido en el campo email con 'unique: true'
 
 module.exports = mongoose.model('Supplier', supplierSchema);
