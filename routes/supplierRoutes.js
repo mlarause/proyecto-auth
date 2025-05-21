@@ -1,15 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
-const mongoose = require('mongoose');
+const db = require('../models');
 const config = require('../config/auth.config');
 const supplierController = require('../controllers/supplierController');
 const { body, validationResult } = require('express-validator');
-
-// Importar modelos directamente para evitar problemas de referencia
-const User = mongoose.model('User');
-const Supplier = mongoose.model('Supplier');
-const Product = mongoose.model('Product');
 
 // Middleware de validación mejorado
 const validateSupplier = [
@@ -21,8 +16,8 @@ const validateSupplier = [
     .notEmpty().withMessage('El email es requerido')
     .isEmail().withMessage('Email inválido')
     .custom(async (value, { req }) => {
-      const existing = await Supplier.findOne({ email: value });
-      if (existing && (!req.params.id || existing._id.toString() !== req.params.id)) {
+      const existing = await db.supplier.findOne({ email: value });
+      if (existing && existing._id.toString() !== req.params?.id) {
         throw new Error('Email ya registrado');
       }
       return true;
@@ -33,7 +28,7 @@ const validateSupplier = [
     .isArray().withMessage('Debe ser un arreglo de IDs')
     .custom(async (products) => {
       if (products && products.length > 0) {
-        const count = await Product.countDocuments({ _id: { $in: products } });
+        const count = await db.product.countDocuments({ _id: { $in: products } });
         if (count !== products.length) {
           throw new Error('Algunos productos no existen');
         }
@@ -60,16 +55,14 @@ const verifySupplierToken = async (req, res, next) => {
   if (!token) {
     return res.status(403).json({ 
       success: false,
-      message: "Token de autenticación requerido" 
+      message: "Token de autenticación requerido para proveedores" 
     });
   }
 
   try {
     const formattedToken = token.startsWith('Bearer ') ? token.slice(7) : token;
     const decoded = jwt.verify(formattedToken, config.secret);
-    
-    // Usar el modelo User directamente
-    const user = await User.findById(decoded.id).populate('roles').exec();
+    const user = await db.user.findById(decoded.id).populate('roles').exec();
     
     if (!user) {
       return res.status(404).json({
@@ -82,7 +75,7 @@ const verifySupplierToken = async (req, res, next) => {
     req.userRoles = user.roles.map(role => role.name);
     next();
   } catch (error) {
-    console.error('Error en verificación de token:', error);
+    console.error('Error en verificación de token (Suppliers):', error);
     
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({
